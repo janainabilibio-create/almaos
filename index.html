@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ALMA OS — Sistema de Negócio | Janaína Bilibio</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#161412">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ALMA OS">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --black:#161412;
+    --charcoal:#232019;
+    --charcoal-2:#2c2820;
+    --cream:#faf7f2;
+    --white:#ffffff;
+    --gold:#b8935f;
+    --gold-light:#d4b98c;
+    --nude:#efe6d8;
+    --text-dark:#2a2620;
+    --text-muted:#8a8175;
+    --danger:#b5544a;
+    --success:#5c7a5c;
+    --border:#e3d9cb;
+    --shadow: 0 2px 12px rgba(22,20,18,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Helvetica Neue',Arial,sans-serif;background:var(--cream);color:var(--text-dark);}
+  a{color:inherit;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--nude);border-radius:4px;}
+
+  #app{display:flex;min-height:100vh;}
+
+  /* Sidebar */
+  #sidebar{
+    width:230px;flex-shrink:0;background:var(--black);color:var(--cream);
+    display:flex;flex-direction:column;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  #sidebar .brand{padding:0 22px 20px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:12px;}
+  #sidebar .brand h1{font-size:19px;letter-spacing:2px;margin:0 0 2px;font-weight:600;color:var(--white);}
+  #sidebar .brand p{margin:0;font-size:11px;color:var(--gold-light);letter-spacing:1px;text-transform:uppercase;}
+  .nav-item{
+    padding:11px 22px;font-size:13.5px;cursor:pointer;color:#cfc9bd;border-left:3px solid transparent;
+    display:flex;align-items:center;justify-content:space-between;transition:.15s;
+  }
+  .nav-item:hover{background:rgba(255,255,255,0.05);color:var(--white);}
+  .nav-item.active{background:rgba(184,147,95,0.14);color:var(--gold-light);border-left-color:var(--gold);font-weight:600;}
+  .nav-badge{background:var(--gold);color:var(--black);font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px;min-width:16px;text-align:center;}
+  .nav-section-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#6b6459;padding:16px 22px 6px;}
+
+  /* Main */
+  #main{flex:1;min-width:0;padding:28px 34px 60px;}
+  #topbar{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
+  #topbar h2{margin:0;font-size:24px;font-weight:600;letter-spacing:.3px;}
+  #topbar .date-today{font-size:12.5px;color:var(--text-muted);}
+
+  .card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:18px 20px;box-shadow:var(--shadow);}
+  .card + .card{margin-top:16px;}
+  .grid{display:grid;gap:16px;}
+  .grid-2{grid-template-columns:1fr 1fr;}
+  .grid-3{grid-template-columns:1fr 1fr 1fr;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  @media(max-width:1000px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:1fr 1fr;} .grid-2{grid-template-columns:1fr;}}
+  @media(max-width:640px){.grid-4,.grid-3{grid-template-columns:1fr;} #app{flex-direction:column;} #sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:14px;} #sidebar .brand{width:100%;border:none;padding-bottom:8px;} .nav-section-label{display:none;} #main{padding:18px;}}
+
+  .kpi{padding:16px 18px;}
+  .kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;}
+  .kpi .value{font-size:26px;font-weight:700;color:var(--black);}
+  .kpi .sub{font-size:12px;color:var(--gold);margin-top:4px;font-weight:600;}
+
+  .progress-wrap{background:var(--nude);border-radius:8px;height:10px;overflow:hidden;margin-top:8px;}
+  .progress-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));border-radius:8px;transition:width .3s;}
+
+  h3.section-title{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:0 0 12px;font-weight:700;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:8px 10px;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border);}
+  td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:#fbf8f3;}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;background:var(--black);color:var(--white);border:none;padding:9px 16px;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;letter-spacing:.2px;}
+  .btn:hover{background:var(--charcoal-2);}
+  .btn.gold{background:var(--gold);color:var(--black);}
+  .btn.gold:hover{background:var(--gold-light);}
+  .btn.ghost{background:transparent;color:var(--text-dark);border:1px solid var(--border);}
+  .btn.ghost:hover{background:var(--nude);}
+  .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+  .btn.danger:hover{background:var(--danger);color:var(--white);}
+  .btn.xs{padding:4px 9px;font-size:11.5px;border-radius:5px;}
+  .btn.icon{padding:6px 9px;}
+  .toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+
+  .tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .tag.stage-new{background:#eee;color:#555;}
+  .tag.stage-contact{background:#e6ecf5;color:#3b5a86;}
+  .tag.stage-diag{background:#fff1d6;color:#8a6a1f;}
+  .tag.stage-proposal{background:#fde9d0;color:#95571b;}
+  .tag.stage-negotiation{background:#f6dfc9;color:#95571b;}
+  .tag.stage-waiting{background:#f0d9b0;color:#7a5320;}
+  .tag.stage-won{background:#dcead9;color:#3f6b3d;}
+  .tag.stage-limbo{background:#e8e2d8;color:#6e6455;}
+  .tag.stage-lost{background:#f3dcd8;color:#8f3b31;}
+  .tag.overdue{background:#f3dcd8;color:#8f3b31;}
+  .tag.today{background:#fff1d6;color:#8a6a1f;}
+  .tag.upcoming{background:#e6ecf5;color:#3b5a86;}
+  .tag.status-ativa{background:#fff1d6;color:#8a6a1f;}
+  .tag.status-finalizada{background:#dcead9;color:#3f6b3d;}
+
+  .empty-state{padding:30px 10px;text-align:center;color:var(--text-muted);font-size:13.5px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(22,20,18,0.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--white);border-radius:12px;padding:26px 28px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;}
+  .modal h3{margin:0 0 16px;font-size:17px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;}
+  .field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:13.5px;font-family:inherit;background:var(--cream);}
+  .field textarea{min-height:80px;resize:vertical;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+
+  .subtabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+  .subtab{padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;background:var(--nude);color:var(--text-dark);}
+  .subtab.active{background:var(--black);color:var(--white);}
+
+  .script-card{border:1px solid var(--border);border-radius:9px;padding:14px 16px;margin-bottom:10px;background:var(--white);}
+  .script-card h4{margin:0 0 8px;font-size:14px;}
+  .script-card pre{white-space:pre-wrap;font-family:inherit;font-size:13px;margin:0 0 8px;color:var(--text-dark);line-height:1.5;}
+
+  .note{font-size:12px;color:var(--text-muted);background:var(--nude);border-radius:8px;padding:10px 13px;margin-bottom:14px;}
+  .note.phase2{background:#eef1ea;color:#3f5c3d;}
+
+  .checklist-item{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);font-size:13.5px;}
+  .checklist-item input{width:16px;height:16px;}
+  .checklist-item.done span{text-decoration:line-through;color:var(--text-muted);}
+
+  .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .calendar-day{border:1px solid var(--border);border-radius:6px;min-height:64px;padding:5px;font-size:11px;background:var(--white);}
+  .calendar-day .num{font-weight:700;color:var(--text-muted);}
+  .calendar-day .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block;margin-top:3px;}
+  .calendar-day.today{border-color:var(--gold);background:#fff9ef;}
+
+  input[type="file"]{font-size:12px;}
+  .small-muted{font-size:12px;color:var(--text-muted);}
+
+  .kanban-board{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;margin-top:12px;}
+  .kanban-col{background:var(--nude);border-radius:10px;padding:10px;min-width:230px;max-width:230px;flex-shrink:0;transition:background .15s;}
+  .kanban-col-header{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:8px;display:flex;justify-content:space-between;padding:0 2px;}
+  .kanban-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;cursor:grab;}
+  .kanban-card:active{cursor:grabbing;}
+  .kanban-card .nome{font-weight:700;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="brand">
+      <h1>ALMA OS</h1>
+      <p>Janaína Bilibio</p>
+    </div>
+    <div id="nav"></div>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <h2 id="page-title">Dashboard</h2>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="date-today" id="cloud-badge"></div>
+        <div class="date-today" id="today-label"></div>
+      </div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Título</h3>
+    <form id="modalForm"></form>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===================== UTILIDADES ===================== */
+const STORAGE_KEY = 'alma_os_state_v1';
+const fmtBRL = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtDate = d => { if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('pt-BR'); };
+const todayStr = () => new Date().toISOString().slice(0,10);
+const monthStr = d => d.slice(0,7);
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const escHtml = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function stageColorClass(estagio){
+  if(!estagio) return 'stage-new';
+  if(estagio.startsWith('Perdido')) return 'stage-lost';
+  if(estagio==='Fechado - Ganho') return 'stage-won';
+  if(estagio==='Sem Retorno' || estagio==='Momento Inadequado') return 'stage-limbo';
+  if(estagio==='Aguardando Decisão') return 'stage-waiting';
+  if(estagio==='Em Negociação') return 'stage-negotiation';
+  if(estagio==='Proposta Enviada') return 'stage-proposal';
+  if(estagio==='Diagnóstico Agendado' || estagio==='Diagnóstico Realizado') return 'stage-diag';
+  if(estagio==='Contato Iniciado') return 'stage-contact';
+  return 'stage-new';
+}
+function addMonths(ym, n){ const [y,m]=ym.split('-').map(Number); const d=new Date(y, m-1+n, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function monthLabel(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); }
+function daysDiff(dateStr){ const d1=new Date(todayStr()+'T00:00:00'); const d2=new Date(dateStr+'T00:00:00'); return Math.round((d2-d1)/86400000); }
+
+/* ===================== ESTADO PADRÃO ===================== */
+function defaultScheduleMeta(){
+  const start = todayStr().slice(0,7);
+  const sched = [];
+  for(let i=0;i<3;i++) sched.push({month: addMonths(start,i), goal:15000});
+  for(let i=3;i<9;i++) sched.push({month: addMonths(start,i), goal:20000});
+  for(let i=9;i<21;i++) sched.push({month: addMonths(start,i), goal:30000});
+  return sched;
+}
+
+/* ===================== CONTEÚDO DO MÉTODO ALMA® E DA MARCA (v1) ===================== */
+/* Extraído dos documentos "Método ALMA — Documento de Método" e "Brand Model Canvas" enviados por Janaína. */
+const ALMA_PRODUTO_DESCRICOES_V1 = {
+  'Mapa Alma': 'Diagnóstico Estratégico de Imagem (Mapa ALMA, sem colorimetria): Pirâmide da Alma + Assinatura de Imagem + Plano de Ação. Online ou presencial em Curitiba, com 3 meses de suporte via WhatsApp para implementação.',
+  'Mapa Alma + Visagismo': 'Mapa ALMA + Ciclo Beauty: inclui Mapeamento Facial, Aula de Automake e Visagismo Simulado — leitura estratégica de rosto e cabelo dentro da Assinatura de Imagem (não é aula de maquiagem genérica).',
+  'Projeto Alma': 'Projeto ALMA — Núcleo Vestir: Ciclo 1 (diagnóstico e Assinatura de Imagem) + Ciclo 2 completo (triagem/mapeamento de closet, shopping list, personal shopping e montagem de looks), com 3 meses de acompanhamento via WhatsApp. Presencial em Curitiba.',
+  'Projeto Alma + Visagismo': 'Projeto ALMA + Ciclo Beauty: Núcleo Vestir completo + Maquiagem Estratégica e Visagismo Simulado.'
+};
+function ALMA_ARTIGOS_V1(){
+  return [
+    {id:uid(), categoria:'Metodologia', titulo:'O que é o Método ALMA®', conteudo:'O Método ALMA® é uma metodologia proprietária de construção de imagem estratégica. Parte de quem a cliente é para chegar em como ela quer ser percebida — e só depois disso chega às decisões práticas de guarda-roupa, compras e looks.\n\nA maioria das abordagens de imagem começa pela roupa: biotipo, cartela de cores, estilo pré-definido, tendências. O Método ALMA começa pela identidade — um diagnóstico real de quem a cliente é, o que ela comunica hoje e onde está o descompasso entre os dois. Roupa é a última etapa, não a primeira.\n\nObjetivo final: a cliente termina com critério internalizado, não dependência. Ela abre o guarda-roupa e sabe o que fazer sozinha — não porque decorou regras, mas porque entendeu o porquê de cada decisão.'},
+    {id:uid(), categoria:'Metodologia', titulo:'O Acrônimo ALMA', conteudo:'A — Autenticidade Estratégica: parte de quem ela é, não de uma estética genérica ou arquétipo importado.\n\nL — Linguagem de Autoridade: constrói como ela comunica sua identidade visualmente, com intenção e leitura estratégica de contexto.\n\nM — Mapeamento de Identidade: diagnostica quem ela é e onde está o descompasso antes de qualquer decisão visual. O mapa precede o movimento.\n\nA — Assinatura Pessoal: entrega um critério único e permanente, só dela — não um estilo emprestado.'},
+    {id:uid(), categoria:'Metodologia', titulo:'A Pirâmide da Alma (mecanismo de diagnóstico)', conteudo:'É o diagnóstico de identidade que precede qualquer decisão visual. É o que gera a Assinatura de Imagem — o critério único e pessoal que orienta todas as escolhas seguintes.\n\nO que diagnostica: quem ela é e o que já comunica hoje; como ela quer ser percebida (profissional, social, pessoal); a lacuna entre os dois; os contextos reais da rotina (não um cenário idealizado).\n\nO que entrega: a Assinatura de Imagem. Não é um estilo, não é uma paleta — é um raciocínio que a cliente consegue usar sozinha, para sempre, em qualquer decisão de imagem.'},
+    {id:uid(), categoria:'Metodologia', titulo:'Mapa ALMA — Diagnóstico Estratégico (produto de entrada)', conteudo:'Processo completo de diagnóstico e construção da Assinatura de Imagem. A cliente recebe o projeto estratégico e 3 meses de suporte via WhatsApp para implementação. Disponível online (Brasil e exterior) ou presencial em Curitiba. Pode ser contratado com ou sem análise de colorimetria. É a porta de entrada para o Projeto ALMA, com política de upgrade e cashback.\n\nComo funciona — passo a passo:\n1) Imersão: formulário aprofundado + exercícios de estilo (moodboard, análise de fotos, perguntas estratégicas sobre identidade, rotina e contextos — sem resposta certa ou errada, é descoberta).\n2) Primeiro Encontro: videochamada ou presencial em Curitiba — conversa aprofundada sobre quem ela é, como quer ser vista e onde quer chegar. Coloração pessoal é analisada aqui, se contratada.\n3) Construção do Projeto de Imagem: estratégia de estilo, estratégia corporal e diretrizes práticas aplicadas à rotina real dela — não é template.\n4) Devolutiva: apresentação completa do projeto, dúvidas respondidas, material organizado entregue.\n5) Suporte de 3 meses via WhatsApp para dúvidas de implementação (compras, looks, peças).'},
+    {id:uid(), categoria:'Metodologia', titulo:'Projeto ALMA — Construção Completa (produto principal)', conteudo:'Processo de ponta a ponta, do diagnóstico à execução, em dois ciclos + um opcional (Beauty).\n\nCiclo 1 — Imersão e Diagnóstico: Atendimento Inicial (imersão completa: coloração pessoal, estilo, corpo, identidade, rotina, contextos e objetivos — precedido por exercícios de estilo online); Confirmação de Estilo (quando há mais de um caminho possível, não obrigatório em todos os processos); Apresentação do Projeto e Plano de Ação (Assinatura de Imagem completa: estratégia de estilo, estratégia corporal e plano de ação detalhado).\n\nCiclo 2 — Implementação: Triagem e Mapeamento do Closet (3h — cada peça avaliada pela Assinatura de Imagem, gera lista de compras estratégica); Montagem da Shopping List; Personal Shopping (3h, acompanhado); Montagem de Looks (3h — combinações reais fotografadas nos contextos da rotina, dossiê visual final).\n\nAcompanhamento: 3 meses de suporte via WhatsApp durante toda a implementação.'},
+    {id:uid(), categoria:'Metodologia', titulo:'Ciclo 3 — Beauty (camada opcional)', conteudo:'Expande o diagnóstico além do vestuário. Cobre Maquiagem Estratégica (análise alinhada à Assinatura de Imagem — o que valoriza, o que compete, o que é neutro; não é aula de maquiagem, é leitura estratégica do rosto) e Visagismo Simulado (análise de corte e coloração de cabelo alinhada ao projeto — diretrizes para o visual completo). Pode ser contratado com um ou ambos os elementos.'},
+    {id:uid(), categoria:'Metodologia', titulo:'Política de Upgrade com Cashback', conteudo:'A cliente que fez o Mapa ALMA pode migrar para o Projeto ALMA em até 15 dias após a finalização, pagando apenas a diferença — o valor já investido no diagnóstico é abatido integralmente, não é perdido.\n\nIsso reduz a barreira de entrada no Mapa ALMA e torna o upgrade natural: a cliente não sente que "errou" ao começar pelo diagnóstico, sente que avançou para o próximo passo com segurança.'},
+    {id:uid(), categoria:'Metodologia', titulo:'Diferenciais do Método', conteudo:'1) Começa pela identidade, não pela roupa.\n2) Metodologia proprietária com nome registrado — acrônimo, ciclos, mecanismo único (Pirâmide da Alma) e entregável definido (Assinatura de Imagem); não é uma coleção de técnicas, é um sistema.\n3) Aplicado aos contextos reais da cliente (reunião, evento, viagem, home office, contexto clínico, executivo) — sem receita genérica.\n4) O critério fica com a cliente para sempre — o objetivo é transferir o raciocínio, não criar dependência.\n5) Jana é a entrega — sem intermediários na execução (diagnóstico, triagem, compras e montagem conduzidos por ela); não é escala, é precisão.\n6) Fora do eixo SP-RJ (Curitiba + online) com metodologia que compete com qualquer referência nacional.\n7) Processo estruturado com marcos claros — a cliente sente o avanço a cada encontro, não só no resultado final.'},
+    {id:uid(), categoria:'Metodologia', titulo:'O que o Método NÃO faz', conteudo:'Não faz: retira a essência/personalidade da cliente; ensina que elegância é igual a alfaiataria/salto/tecidos encorpados; aplica fórmula genérica que serve para qualquer pessoa; transforma todas as clientes na mesma pessoa; cria dependência de consultoria contínua; vende tendências de moda ou "o que está na moda".\n\nFaz: parte de quem ela é para construir uma imagem que só pode ser dela; trabalha com o corpo atual, a rotina real, a fase atual da vida; constrói critério personalizado e permanente; transfere o raciocínio, não só o resultado; gera autonomia real nas decisões de imagem; trabalha com presença e percepção, não com moda.'},
+    {id:uid(), categoria:'Metodologia', titulo:'Para quem o método é indicado', conteudo:'Mulheres em transição de vida, carreira ou fase, cuja imagem não acompanhou quem elas se tornaram.\nProfissionais de alta performance que precisam que a imagem comunique competência e autoridade com intencionalidade.\nMulheres que investem em roupa e continuam sem looks que funcionem — o problema não é peça, é critério.\nQuem quer parar de depender de opinião de terceiros para tomar decisões de imagem.\nQuem quer entender o raciocínio — não apenas receber um resultado.'},
+    {id:uid(), categoria:'Metodologia', titulo:'Vocabulário da marca — use e evite', conteudo:'Palavras que orientam o método (usar em conteúdo, scripts e conversas): percepção, posicionamento, diagnóstico, assinatura de imagem, estratégia, presença, identidade, credibilidade visual, intenção, autonomia, critério, lacuna de imagem.\n\nPalavras que o método rejeita (evitar sempre): transformação, jornada, empoderar, brilhar, "sua melhor versão", autoestima, "se amar", despertar, tendências, moda.\n\nO método existe na interseção de consultoria de imagem, personal branding e psicologia da percepção — não é estética, não é moda, é estratégia aplicada à imagem.'},
+    {id:uid(), categoria:'Marca', titulo:'Missão, Visão e Valores', conteudo:'Missão: toda mulher merece saber se vestir de um jeito que goste, se sinta bem e comunique o que deseja para o mundo — ao mesmo tempo. Provar que é possível alinhar autenticidade e imagem intencional, algo raro no mercado.\n\nVisão (3 anos): faturamento de +R$50k/mês; lista de espera para a consultoria (demanda maior que a capacidade); atender mulheres selecionadas com qualidade premium e tempo para a família; referência nacional em imagem feminina autêntica e intencional.\n\nValores: entrega completa, personalização radical, acolhimento, autenticidade, confiança, relação humana, sem fórmulas, resultado real.'},
+    {id:uid(), categoria:'Marca', titulo:'Posicionamento e Mensagem-Chave', conteudo:'A única consultora que alinha o que a cliente gosta de usar com o que ela precisa comunicar, sem abrir mão de nenhum dos dois. Referência em imagem para mulheres que cansaram de ser subestimadas. Premium, acolhedora e profundamente personalizada.\n\nMensagem-chave: "Ajudo mulheres que cansaram de ser subestimadas a serem reconhecidas pela excelência que sempre tiveram."'},
+    {id:uid(), categoria:'Marca', titulo:'Tom de Voz e Personalidade', conteudo:'Personalidade: acolhedora, firme, sofisticada, próxima, inteligente, cuidadosa, autêntica, elegante sem frieza.\n\nTom de voz: acolhedor mas não condescendente; firme mas não frio; próximo sem ser informal demais; frases curtas que respiram — não explica demais; fala de dentro pra fora, como quem viveu, não como quem estudou.\n\nAtitudes: acolhe antes de diagnosticar; explica o porquê de cada decisão; não impõe, constrói junto; fala com firmeza sem perder o calor; entrega mais do que prometeu.'},
+    {id:uid(), categoria:'Marca', titulo:'Promessa e Benefícios', conteudo:'Promessa: você não vai virar outra pessoa — vai parecer, finalmente, quem você sempre foi. Nada é implementado sem sua aprovação. O resultado tem a sua cara, não a da consultora. Você sai capaz — e volta porque quer, não porque precisa.\n\nBenefícios racionais: documento permanente (projeto de imagem), critério de compra, armário funcional, menos gasto errado.\nBenefícios emocionais: ser vista como sempre mereceu, parar de se provar, se reconhecer no espelho.'},
+    {id:uid(), categoria:'Marca', titulo:'Núcleo da marca — problema, proposta, emoção', conteudo:'Problema: ser subestimada antes de abrir a boca. Realidade atual: imagem que não acompanhou quem ela se tornou. Proposta: ser vista pela excelência que sempre teve.\n\nA cliente chega cansada de se provar. Sai sendo reconhecida. O trabalho acontece entre essas duas realidades — com profundidade, acolhimento e um projeto que pertence a ela para sempre.'},
+    {id:uid(), categoria:'Marca', titulo:'Público-Alvo (Audiência)', conteudo:'Médicas, advogadas, empresárias em ascensão; mulheres pós-emagrecimento reconstruindo identidade; profissionais que cresceram e a imagem ficou pra trás; mulheres que cansaram de tentar sozinhas.\n\nDores e medos: ser subestimada repetidamente; não se reconhecer no espelho; virar outra pessoa no processo; gastar muito e não ver resultado; precisar se provar duas vezes sempre.\n\nObjetivos e desejos: ser vista pela excelência que tem; entrar numa sala e se sentir no lugar certo; armário que funciona com lógica; critério próprio para sempre; imagem que diz quem ela é antes de falar.'},
+    {id:uid(), categoria:'Marca', titulo:'Segmento, Ticket e Diferenciais Competitivos', conteudo:'Consultoria de imagem feminina premium, alto ticket, presencial em Curitiba + remoto nacional. Nicho: imagem profissional + pós-emagrecimento.\n\nDiferenciais frente à concorrência: não trabalha com classificação de corpo, 7 estilos ou receitas prontas; projeto aprovado antes de qualquer execução; resultado com a cara da cliente, nunca com a cara da consultora; visão integrada (roupa, cores, cabelo e make no mesmo projeto); documento permanente de até 85 páginas; +1.000 clientes atendidas.'},
+    {id:uid(), categoria:'Marca', titulo:'Indicadores-chave do negócio (KPIs estratégicos)', conteudo:'Faturamento mensal frente à meta; volume de leads qualificados por mês; taxa de indicação orgânica de clientes; taxa de recorrência (clientes que voltam ou compram acompanhamento); engajamento e alcance no Instagram; percepção do diferencial pela cliente (feedback qualitativo).\n\nEsses indicadores complementam os KPIs operacionais já monitorados nas abas Dashboard, CRM e Conteúdo deste sistema.'},
+    {id:uid(), categoria:'Marca', titulo:'Pontos de Contato da Marca', conteudo:'Instagram (conteúdo, stories, reels); Google (SEO orgânico #1 em Curitiba); DM e WhatsApp (venda e relacionamento); atendimento presencial (experiência premium); kit de boas-vindas (primeiro toque físico da marca); projeto de imagem entregue (presença permanente na vida da cliente).'}
+  ];
+}
+
+/* Checklist de execução do projeto contratado (etapas reais do Método ALMA®) — definido antes de defaultState()/loadState() porque migrateState() chama checklistParaProduto() durante o carregamento inicial. */
+const CHECKLIST_MAPA_ALMA = ['Imersão (formulário + exercícios de estilo)','Primeiro Encontro (diagnóstico + coloração, se contratada)','Construção do Projeto de Imagem','Devolutiva','Suporte via WhatsApp (3 meses)'];
+const CHECKLIST_PROJETO_ALMA = ['Atendimento Inicial (imersão completa)','Confirmação de Estilo (se necessário)','Apresentação do Projeto e Plano de Ação','Triagem e Mapeamento do Closet','Montagem da Shopping List','Personal Shopping','Montagem de Looks','Suporte via WhatsApp (3 meses)'];
+const CHECKLIST_BEAUTY = ['Mapeamento Facial','Aula de Automake','Visagismo Simulado'];
+function checklistParaProduto(nomeProduto){
+  let etapas;
+  if(!nomeProduto) etapas = ['Atendimento inicial','Execução','Entrega final'];
+  else if(nomeProduto.indexOf('Projeto Alma')>=0) etapas = CHECKLIST_PROJETO_ALMA.slice();
+  else if(nomeProduto.indexOf('Mapa Alma')>=0) etapas = CHECKLIST_MAPA_ALMA.slice();
+  else etapas = ['Atendimento inicial','Execução','Entrega final'];
+  if(nomeProduto && nomeProduto.indexOf('Visagismo')>=0) etapas = etapas.concat(CHECKLIST_BEAUTY);
+  return etapas.map(step=>({step, done:false}));
+}
+
+function defaultState(){
+  return {
+    contentV1Applied: true,
+    meta: {
+      schedule: defaultScheduleMeta(),
+      ticketMedio: 4625,
+      produtos: [
+        {id:uid(), nome:'Mapa Alma', preco:2500, descricao:ALMA_PRODUTO_DESCRICOES_V1['Mapa Alma']},
+        {id:uid(), nome:'Mapa Alma + Visagismo', preco:4000, descricao:ALMA_PRODUTO_DESCRICOES_V1['Mapa Alma + Visagismo']},
+        {id:uid(), nome:'Projeto Alma', preco:5000, descricao:ALMA_PRODUTO_DESCRICOES_V1['Projeto Alma']},
+        {id:uid(), nome:'Projeto Alma + Visagismo', preco:7000, descricao:ALMA_PRODUTO_DESCRICOES_V1['Projeto Alma + Visagismo']}
+      ]
+    },
+    crm: {
+      stages: ['Novo Lead','Contato Iniciado','Diagnóstico Agendado','Diagnóstico Realizado','Proposta Enviada','Em Negociação','Aguardando Decisão','Fechado - Ganho','Sem Retorno','Momento Inadequado','Perdido','Perdido - Indisponibilidade de Investimento','Perdido - Fechou com Outro Profissional','Perdido - Desistiu do Projeto'],
+      leads: []
+    },
+    clientes: [],
+    base: {
+      artigos: ALMA_ARTIGOS_V1()
+    },
+    scripts: {
+      categorias: [
+        {nome:'Social Selling', itens:[
+          {titulo:'Como interagir antes do contato direto', conteudo:'Antes de mandar qualquer mensagem, invista 3 a 5 minutos por dia interagindo de verdade com stories e posts das leads mais quentes (quem comentou, curtiu, respondeu enquete). Comente algo específico e verdadeiro sobre o conteúdo dela — evite comentários genéricos. Isso aquece a relação antes da abordagem direta e aumenta muito a taxa de resposta no DM.'}
+        ]},
+        {nome:'Boas-vindas', itens:[
+          {titulo:'Novo seguidor / primeiro contato', conteudo:'Oi, [nome]! Que bom ter você por aqui. Vi que você começou a me seguir / comentou sobre [tema] — isso já mostra que percepção e imagem são algo que você valoriza. Fico à disposição se quiser trocar uma ideia sobre como você está sendo percebida hoje e onde gostaria de chegar. Sem compromisso, só quero te conhecer melhor.'}
+        ]},
+        {nome:'DM / Instagram', itens:[
+          {titulo:'Abordagem morna (lead que interagiu)', conteudo:'Oi [nome], tudo bem? Vi que você [comentou / curtiu / assistiu ao story sobre X] e fiquei com vontade de te perguntar: hoje, quando você se olha no espelho antes de sair de casa, você sente que sua imagem realmente comunica quem você é? Se quiser, posso te mostrar como funciona o método que uso com minhas clientes (o Mapa Alma) — é rapidinho, sem compromisso.'}
+        ]},
+        {nome:'WhatsApp', itens:[
+          {titulo:'Primeiro contato pós-lead (anúncio/indicação)', conteudo:'Oi [nome], aqui é a Janaína! Recebi seu contato sobre a consultoria de imagem e fico muito feliz com seu interesse. Antes de mais nada, me conta um pouco: o que te fez procurar esse tipo de trabalho agora? Assim consigo te indicar o caminho certo dentro do método, sem te empurrar nada que não faça sentido pra você.'}
+        ]},
+        {nome:'Condução de Call / Diagnóstico', itens:[
+          {titulo:'Estrutura da call de diagnóstico', conteudo:'Abertura (2min): agradecer o tempo e alinhar expectativa — "hoje é um bate-papo de diagnóstico; no final te explico como funciona o processo, tudo bem?"\n\nSituação atual: "Como você descreveria sua relação com sua imagem hoje?" / "O que te fez buscar isso agora, especificamente?"\n\nDor: "O que mais te incomoda quando você se olha no espelho ou escolhe uma roupa pra sair?" / "Isso te afeta em que áreas da vida — trabalho, presença, relacionamentos?"\n\nImplicação: "Se nada mudar nos próximos 6 meses, como você imagina que isso vai te afetar?"\n\nNecessidade: "Se eu te mostrasse um caminho estruturado pra resolver isso de vez, faria sentido pra você agora?"\n\nTransição pra oferta: "Deixa eu te mostrar como funciona o método e qual caminho combina mais com o seu momento."'}
+        ]},
+        {nome:'Apresentação da Proposta', itens:[
+          {titulo:'Apresentar o pacote certo', conteudo:'Com base no que você me contou, o caminho que mais faz sentido pra você é o [Mapa Alma / Projeto Alma / + Visagismo]. Ele entrega [benefícios ligados à dor que ela relatou]. O investimento é de R$X, e o resultado que você leva é [transformação, não só entrega]. Posso reservar sua vaga ainda essa semana — como prefere fazer, pix ou cartão?'}
+        ]},
+        {nome:'Fechamento', itens:[
+          {titulo:'Convite direto pra decisão', conteudo:'Pelo que você me contou, dá pra perceber que você já sabe que precisa disso — a única pergunta é: quando você quer começar a se sentir assim? Posso confirmar sua vaga agora mesmo, o processo já começa essa semana.'}
+        ]},
+        {nome:'Objeções', itens:[
+          {titulo:'"Tá caro"', conteudo:'Entendo. Só pra te ajudar a enxergar: o investimento se paga rápido quando você considera quanto tempo e dinheiro já foi gasto comprando roupa errada ou se sentindo insegura em decisões importantes. Aqui você resolve isso de forma definitiva, com método.'},
+          {titulo:'"Vou pensar"', conteudo:'Faz sentido, é uma decisão importante. Só te pergunto: o que especificamente você precisa pensar — é sobre o investimento, sobre o momento, ou sobre se isso vai funcionar pra você? (identificar a objeção real por trás)'},
+          {titulo:'"Não tenho tempo agora"', conteudo:'Entendo completamente. Só reforço que o método foi desenhado pra rotina de mulher ocupada — as etapas se encaixam na sua agenda, não o contrário. Geralmente é quando estamos mais ocupadas que mais precisamos resolver isso rápido.'},
+          {titulo:'"Preciso falar com o marido/sócio"', conteudo:'Super válido. Quer que eu te mande um resumo por escrito com valores e benefícios pra facilitar essa conversa? Assim vocês decidem com clareza.'},
+          {titulo:'"Já tentei antes e não deu certo"', conteudo:'Entendo a desconfiança. A diferença aqui é um método estruturado com plano de ação e acompanhamento — não é só um book de fotos.'}
+        ]},
+        {nome:'Follow-up pós-proposta', itens:[
+          {titulo:'D+1 — confirmar recebimento', conteudo:'Oi [nome], só confirmando que chegou certinho a proposta que te mandei ontem. Ficou alguma dúvida?'},
+          {titulo:'D+3 — reforço de valor', conteudo:'Oi [nome], lembrando que sua vaga está reservada até [data]. Separei um horário pra começarmos ainda esse mês, quer aproveitar?'},
+          {titulo:'D+5 — urgência real', conteudo:'Oi [nome], só pra te avisar que as vagas desse mês estão quase fechando. Quer que eu segure a sua?'},
+          {titulo:'D+7 — última tentativa', conteudo:'Oi [nome], não quero ser insistente, então essa é minha última mensagem sobre isso: se ainda fizer sentido pra você, me chama que resolvemos rapidinho. Se não for o momento, tudo bem, fico na torcida por você de qualquer forma.'}
+        ]},
+        {nome:'Onboarding de Cliente Nova', itens:[
+          {titulo:'Boas-vindas pós-fechamento', conteudo:'Seja muito bem-vinda ao [Mapa Alma / Projeto Alma], [nome]! Estou muito feliz em te acompanhar nesse processo. Os próximos passos são: 1) preencher o formulário de anamnese, 2) agendar a sessão de diagnóstico, 3) [demais etapas do processo]. Qualquer dúvida, me chama por aqui.'}
+        ]},
+        {nome:'Depoimento', itens:[
+          {titulo:'Pedido de depoimento', conteudo:'Oi [nome], como você está se sentindo agora que finalizamos seu [Mapa Alma / Projeto Alma]? Adoraria muito se você topasse gravar um depoimento rapidinho (áudio, vídeo ou texto, do jeito que for mais fácil pra você) contando como foi sua experiência — isso ajuda outras mulheres a decidirem investir nelas mesmas também.'}
+        ]},
+        {nome:'Reativação', itens:[
+          {titulo:'Lead frio / cliente finalizada', conteudo:'Oi [nome], faz um tempinho que a gente não troca uma ideia! Lembrei de você porque [motivo genuíno: lançamento, época do ano, mudança de vida]. Como você está hoje com a sua imagem — ainda sente aquela vontade de dar um upgrade?'}
+        ]}
+      ]
+    },
+    agenda: { eventos: [] },
+    rotina: {
+      diaria: ['Ritual matinal sem celular (mín. 30 min): movimento, respiração ou gratidão','Revisar metas do mês e follow-ups do dia no CRM','Bloco de Social Selling (15-20 min): interagir com leads quentes','Atendimento de clientes / diagnósticos agendados','Bloco protegido de produção de conteúdo','Follow-ups de CRM e resposta a leads','Registrar o que entrou/saiu no financeiro do dia','Fechamento do dia: revisar o que foi feito e ajustar agenda de amanhã'],
+      semanal: ['Revisão dos números da semana (CRM, conteúdo, financeiro)','Reunião com a estrategista','Planejamento de conteúdo da semana seguinte','Reativação de leads frios (D+30/D+60/D+90)','Check-in com clientes ativas'],
+      mensal: ['Fechamento financeiro do mês (DRE + fluxo de caixa)','Revisão de metas x realizado do mês','Reunião estratégica com a estrategista (mês seguinte)','Pedido de depoimentos das clientes finalizadas no mês','Planejamento editorial do mês seguinte','Revisão de campanhas de tráfego pago (se ativas)'],
+      anual: ['Revisão anual de metas e definição das metas do próximo ano','Análise dos melhores e piores conteúdos/produtos do ano','Revisão de precificação dos produtos','Planejamento estratégico anual do negócio'],
+      completedToday: {date: todayStr(), items:{}}
+    },
+    updates: { entradas: [] },
+    financeiro: {
+      entradas: [], saidas: [],
+      categoriasFixas: ['Ferramentas/Softwares','Contabilidade','Assessoria/Estrategista','Tráfego pago (mínimo fixo)','Educação/Cursos','Aluguel/Espaço'],
+      categoriasVariaveis: ['Produção de conteúdo','Materiais de atendimento','Comissões','Impostos']
+    },
+    gestao: { tarefas: [], reunioes: [] },
+    trafego: { campanhas: [] },
+    conteudo: {
+      posts: [],
+      pilares: ['Autoridade/Método','Bastidores','Prova Social/Resultados de clientes','Educativo (estilo/visagismo)','Conexão/Storytelling pessoal','Oferta/Venda']
+    }
+  };
+}
+
+let state = loadState();
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return migrateState(JSON.parse(raw));
+  }catch(e){ console.error('Falha ao carregar estado', e); }
+  return defaultState();
+}
+function migrateState(s){
+  const d = defaultState();
+  // garante que módulos novos existam mesmo em backups antigos
+  const merged = Object.assign({}, d, s, {
+    meta: Object.assign({}, d.meta, s.meta),
+    crm: Object.assign({}, d.crm, s.crm),
+    base: Object.assign({}, d.base, s.base),
+    scripts: Object.assign({}, d.scripts, s.scripts),
+    agenda: Object.assign({}, d.agenda, s.agenda),
+    rotina: Object.assign({}, d.rotina, s.rotina),
+    updates: Object.assign({}, d.updates, s.updates),
+    financeiro: Object.assign({}, d.financeiro, s.financeiro),
+    gestao: Object.assign({}, d.gestao, s.gestao),
+    trafego: Object.assign({}, d.trafego, s.trafego),
+    conteudo: Object.assign({}, d.conteudo, s.conteudo)
+  });
+  if(!s.contentV1Applied) applyContentV1(merged);
+  d.crm.stages.forEach(st=>{ if(!merged.crm.stages.includes(st)) merged.crm.stages.push(st); });
+  merged.crm.leads.forEach(l=>{ if(!l.historico) l.historico = []; });
+  merged.clientes.forEach(c=>{ if(!c.checklist) c.checklist = checklistParaProduto(c.produto); });
+  return merged;
+}
+
+/* Mescla o conteúdo real do Método ALMA®/marca em estados já salvos (sem apagar o que a cliente já editou) */
+function applyContentV1(merged){
+  const existentes = new Set(merged.base.artigos.map(a=>a.titulo));
+  ALMA_ARTIGOS_V1().forEach(art=>{ if(!existentes.has(art.titulo)) merged.base.artigos.push(art); });
+  const titulosObsoletos = new Set(['Envie seus materiais','Mapa Alma (R$ 2.500)','Mapa Alma + Visagismo (R$ 4.000)','Projeto Alma (R$ 5.000)','Projeto Alma + Visagismo (R$ 7.000)']);
+  merged.base.artigos = merged.base.artigos.filter(a=>!titulosObsoletos.has(a.titulo));
+
+  merged.meta.produtos.forEach(p=>{
+    if(ALMA_PRODUTO_DESCRICOES_V1[p.nome]) p.descricao = ALMA_PRODUTO_DESCRICOES_V1[p.nome];
+  });
+
+  const scriptFixes = [
+    {categoria:'Boas-vindas', titulo:'Novo seguidor / primeiro contato', conteudo:'Oi, [nome]! Que bom ter você por aqui. Vi que você começou a me seguir / comentou sobre [tema] — isso já mostra que percepção e imagem são algo que você valoriza. Fico à disposição se quiser trocar uma ideia sobre como você está sendo percebida hoje e onde gostaria de chegar. Sem compromisso, só quero te conhecer melhor.'},
+    {categoria:'Condução de Call / Diagnóstico', titulo:'Estrutura da call de diagnóstico', conteudo:'Abertura (2min): agradecer o tempo e alinhar expectativa — "hoje é um bate-papo de diagnóstico; no final te explico como funciona o processo, tudo bem?"\n\nSituação atual: "Como você descreveria sua relação com sua imagem hoje?" / "O que te fez buscar isso agora, especificamente?"\n\nDor: "O que mais te incomoda quando você se olha no espelho ou escolhe uma roupa pra sair?" / "Isso te afeta em que áreas da vida — trabalho, presença, relacionamentos?"\n\nImplicação: "Se nada mudar nos próximos 6 meses, como você imagina que isso vai te afetar?"\n\nNecessidade: "Se eu te mostrasse um caminho estruturado pra resolver isso de vez, faria sentido pra você agora?"\n\nTransição pra oferta: "Deixa eu te mostrar como funciona o método e qual caminho combina mais com o seu momento."'},
+    {categoria:'Onboarding de Cliente Nova', titulo:'Boas-vindas pós-fechamento', conteudo:'Seja muito bem-vinda ao [Mapa Alma / Projeto Alma], [nome]! Estou muito feliz em te acompanhar nesse processo. Os próximos passos são: 1) preencher o formulário de anamnese, 2) agendar a sessão de diagnóstico, 3) [demais etapas do processo]. Qualquer dúvida, me chama por aqui.'}
+  ];
+  scriptFixes.forEach(fix=>{
+    const cat = merged.scripts.categorias.find(c=>c.nome===fix.categoria);
+    if(!cat) return;
+    const item = cat.itens.find(i=>i.titulo===fix.titulo);
+    if(item) item.conteudo = fix.conteudo;
+  });
+
+  merged.contentV1Applied = true;
+}
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); pushToCloudDebounced(); }
+
+/* ===================== SINCRONIZAÇÃO NA NUVEM (FASE 2) ===================== */
+const CLOUD_CONFIG_KEY = 'alma_os_cloud_config';
+let cloudDb = null, cloudUnsub = null, cloudStatus = 'disconnected', cloudPushTimer = null, suppressCloudEcho = false;
+
+function loadCloudConfig(){ try{ const raw = localStorage.getItem(CLOUD_CONFIG_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+function saveCloudConfig(cfg){ localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cfg)); }
+function clearCloudConfig(){ localStorage.removeItem(CLOUD_CONFIG_KEY); if(cloudUnsub) cloudUnsub(); cloudDb=null; cloudStatus='disconnected'; updateCloudBadge(); }
+
+function updateCloudBadge(){
+  const el = document.getElementById('cloud-badge'); if(!el) return;
+  const labels = {connected:'● Conectado à nuvem', connecting:'● Conectando...', error:'● Erro na nuvem', disconnected:'Somente local'};
+  el.textContent = labels[cloudStatus] || '';
+  el.style.color = cloudStatus==='connected' ? '#5c7a5c' : (cloudStatus==='error' ? '#b5544a' : 'var(--text-muted)');
+}
+
+function initCloudIfConfigured(){
+  const cfg = loadCloudConfig();
+  if(cfg) connectCloud(cfg, false);
+}
+
+function parseFirebaseConfigInput(raw){
+  let cleaned = raw.trim().replace(/^(const|let|var)\s+\w+\s*=\s*/,'').replace(/;\s*$/,'');
+  return new Function('return (' + cleaned + ')')();
+}
+
+function connectCloud(cfg, isFirstConnect){
+  if(typeof firebase === 'undefined'){
+    cloudStatus = 'error'; updateCloudBadge();
+    alert('Não foi possível carregar o Firebase — verifique sua conexão com a internet e tente novamente.');
+    return;
+  }
+  try{
+    cloudStatus = 'connecting'; updateCloudBadge();
+    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(cfg.firebaseConfig);
+    cloudDb = firebase.firestore();
+    firebase.auth().signInAnonymously().then(()=>{
+      const docRef = cloudDb.collection('workspaces').doc(cfg.workspaceId);
+      if(cloudUnsub) cloudUnsub();
+      cloudUnsub = docRef.onSnapshot(snap=>{
+        if(snap.exists){
+          const remote = snap.data();
+          if(remote && remote.state){
+            suppressCloudEcho = true;
+            state = migrateState(remote.state);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            suppressCloudEcho = false;
+            render();
+          }
+        } else if(isFirstConnect){
+          docRef.set({state: state, updatedAt: Date.now()});
+        }
+        cloudStatus = 'connected'; updateCloudBadge();
+      }, err=>{ console.error(err); cloudStatus='error'; updateCloudBadge(); });
+      saveCloudConfig(cfg);
+    }).catch(err=>{ cloudStatus='error'; updateCloudBadge(); alert('Erro ao autenticar na nuvem: '+err.message); });
+  }catch(e){ cloudStatus='error'; updateCloudBadge(); alert('Erro ao conectar: '+e.message); }
+}
+
+function pushToCloudDebounced(){
+  if(!cloudDb || suppressCloudEcho) return;
+  clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(()=>{
+    const cfg = loadCloudConfig(); if(!cfg||!cloudDb) return;
+    cloudDb.collection('workspaces').doc(cfg.workspaceId).set({state: state, updatedAt: Date.now()}).catch(err=>console.error('Falha ao sincronizar', err));
+  }, 1200);
+}
+
+/* reset checklist diário se mudou o dia */
+if(state.rotina.completedToday.date !== todayStr()){
+  state.rotina.completedToday = {date: todayStr(), items:{}};
+}
+localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+/* ===================== NAVEGAÇÃO ===================== */
+const TABS = [
+  {id:'dashboard', label:'Dashboard'},
+  {id:'metas', label:'Metas & Números'},
+  {id:'crm', label:'CRM'},
+  {id:'clientes', label:'Clientes'},
+  {id:'agenda', label:'Agenda'},
+  {id:'rotina', label:'Rotina'},
+  {id:'updates', label:'Updates do Dia'},
+  {id:'base', label:'Base de Conhecimento'},
+  {id:'scripts', label:'Scripts'},
+  {id:'financeiro', label:'Financeiro'},
+  {id:'gestao', label:'Gestão'},
+  {id:'trafego', label:'Tráfego Pago'},
+  {id:'conteudo', label:'Métricas de Conteúdo'},
+  {id:'nuvem', label:'Nuvem (Fase 2)'},
+  {id:'config', label:'Backup & Config'}
+];
+let activeTab = 'dashboard';
+let crmSubtab = null;
+
+function renderNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML = TABS.map(t=>`<div class="nav-item ${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</div>`).join('');
+}
+function setTab(id){ activeTab = id; document.getElementById('page-title').textContent = TABS.find(t=>t.id===id).label; renderNav(); render(); }
+
+/* ===================== MODAL GENÉRICO ===================== */
+let modalOnSave = null;
+function openModal(title, fields, initial={}){
+  document.getElementById('modalTitle').textContent = title;
+  const form = document.getElementById('modalForm');
+  form.innerHTML = fields.map(f=>{
+    const val = initial[f.key] !== undefined ? initial[f.key] : (f.default!==undefined?f.default:'');
+    if(f.type==='select'){
+      return `<div class="field"><label>${f.label}</label><select name="${f.key}">${f.options.map(o=>`<option value="${escHtml(o)}" ${o===val?'selected':''}>${escHtml(o)}</option>`).join('')}</select></div>`;
+    }
+    if(f.type==='textarea'){
+      return `<div class="field"><label>${f.label}</label><textarea name="${f.key}">${escHtml(val)}</textarea></div>`;
+    }
+    return `<div class="field"><label>${f.label}</label><input type="${f.type||'text'}" name="${f.key}" value="${escHtml(val!==undefined?val:'')}" ${f.required?'required':''}></div>`;
+  }).join('') + `<div class="modal-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button type="submit" class="btn gold">Salvar</button></div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+  form.onsubmit = (e)=>{
+    e.preventDefault();
+    const data = {};
+    fields.forEach(f=>{ data[f.key] = form.elements[f.key].value; });
+    modalOnSave(data);
+    closeModal();
+  };
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+
+/* ===================== RENDER PRINCIPAL ===================== */
+function render(){
+  const c = document.getElementById('content');
+  document.getElementById('today-label').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
+  const renderers = {dashboard:renderDashboard, metas:renderMetas, crm:renderCRM, clientes:renderClientes, agenda:renderAgenda, rotina:renderRotina, updates:renderUpdates, base:renderBase, scripts:renderScripts, financeiro:renderFinanceiro, gestao:renderGestao, trafego:renderTrafego, conteudo:renderConteudo, nuvem:renderNuvem, config:renderConfig};
+  c.innerHTML = renderers[activeTab]();
+}
+
+/* ===================== CÁLCULOS COMPARTILHADOS ===================== */
+function receitaPorMes(){
+  const map = {};
+  state.clientes.forEach(cl=>{
+    if(!cl.dataFechamento) return;
+    const m = monthStr(cl.dataFechamento);
+    map[m] = (map[m]||0) + Number(cl.valor||0);
+  });
+  return map;
+}
+function metaDoMes(ym){
+  const item = state.meta.schedule.find(s=>s.month===ym);
+  return item ? item.goal : 0;
+}
+function ticketMedio(){
+  const t = Number(state.meta.ticketMedio);
+  return t>0 ? t : 4625;
+}
+function periodoSchedule(qtdMeses, offsetInicio=0){
+  const start = todayStr().slice(0,7);
+  const meses = [];
+  for(let i=offsetInicio;i<offsetInicio+qtdMeses;i++) meses.push(addMonths(start,i));
+  return meses;
+}
+function somaMeta(meses){ return meses.reduce((a,m)=>a+metaDoMes(m),0); }
+function somaReceita(meses){ const rec=receitaPorMes(); return meses.reduce((a,m)=>a+(rec[m]||0),0); }
+
+const isLeadGanho = l => l.estagio === 'Fechado - Ganho';
+const isLeadPerdido = l => !!(l.estagio && l.estagio.startsWith('Perdido'));
+const isLeadAberto = l => !isLeadGanho(l) && !isLeadPerdido(l);
+
+function crmKPIs(){
+  const leads = state.crm.leads;
+  const mesAtual = todayStr().slice(0,7);
+  const anoAtual = todayStr().slice(0,4);
+  const leadsMes = leads.filter(l=>l.dataCriacao && l.dataCriacao.slice(0,7)===mesAtual);
+  const leadsAno = leads.filter(l=>l.dataCriacao && l.dataCriacao.slice(0,4)===anoAtual);
+  const ganhos = leads.filter(isLeadGanho);
+  const perdidos = leads.filter(isLeadPerdido);
+  const abertos = leads.filter(isLeadAberto);
+  const ganhosMes = leadsMes.filter(isLeadGanho);
+  const perdidosMes = leadsMes.filter(isLeadPerdido);
+
+  const taxaConversaoGeral = leads.length ? Math.round(ganhos.length/leads.length*100) : 0;
+  const taxaConversaoMes = leadsMes.length ? Math.round(ganhosMes.length/leadsMes.length*100) : 0;
+  const taxaPerdaGeral = leads.length ? Math.round(perdidos.length/leads.length*100) : 0;
+
+  const motivosPerda = {};
+  perdidos.forEach(l=>{ motivosPerda[l.estagio] = (motivosPerda[l.estagio]||0)+1; });
+
+  const porOrigem = {};
+  leads.forEach(l=>{ const o = l.origem||'Não informado'; porOrigem[o] = (porOrigem[o]||0)+1; });
+  const leadsIndicacao = porOrigem['Indicação']||0;
+  const taxaIndicacao = leads.length ? Math.round(leadsIndicacao/leads.length*100) : 0;
+
+  const temposConversao = [];
+  state.clientes.forEach(c=>{
+    if(c.leadId && c.dataFechamento){
+      const lead = leads.find(l=>l.id===c.leadId);
+      if(lead && lead.dataCriacao){
+        const dias = Math.round((new Date(c.dataFechamento+'T00:00:00') - new Date(lead.dataCriacao+'T00:00:00'))/86400000);
+        if(dias>=0) temposConversao.push(dias);
+      }
+    }
+  });
+  const tempoMedioConversao = temposConversao.length ? Math.round(temposConversao.reduce((a,b)=>a+b,0)/temposConversao.length) : null;
+
+  return {
+    total: leads.length, mes: leadsMes.length, ano: leadsAno.length,
+    ganhos: ganhos.length, ganhosMes: ganhosMes.length,
+    perdidos: perdidos.length, perdidosMes: perdidosMes.length,
+    abertos: abertos.length,
+    taxaConversaoGeral, taxaConversaoMes, taxaPerdaGeral,
+    motivosPerda, porOrigem, taxaIndicacao,
+    tempoMedioConversao, amostraConversao: temposConversao.length
+  };
+}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+  const mesAtual = todayStr().slice(0,7);
+  const metaMes = metaDoMes(mesAtual);
+  const rec = receitaPorMes();
+  const recMes = rec[mesAtual]||0;
+  const faltaMes = Math.max(metaMes-recMes,0);
+  const pct = metaMes? Math.min(100, Math.round(recMes/metaMes*100)) : 0;
+
+  const k = crmKPIs();
+
+  const ativas = state.clientes.filter(c=>c.status==='ativa').length;
+  const finalizadas = state.clientes.filter(c=>c.status==='finalizada').length;
+
+  const followupsHoje = countFollowups('today');
+  const followupsAtrasados = countFollowups('overdue');
+
+  const investTrafego = state.trafego.campanhas.reduce((a,c)=>a+Number(c.investimento||0),0);
+  const leadsTrafego = state.trafego.campanhas.reduce((a,c)=>a+Number(c.leads||0),0);
+  const cpl = leadsTrafego? (investTrafego/leadsTrafego) : 0;
+
+  const posts = state.conteudo.posts;
+  const mediaAlcance = posts.length? Math.round(posts.reduce((a,p)=>a+Number(p.alcance||0),0)/posts.length) : 0;
+  const mediaSalvos = posts.length? Math.round(posts.reduce((a,p)=>a+Number(p.salvamentos||0),0)/posts.length) : 0;
+
+  return `
+  <div class="grid grid-4">
+    <div class="card kpi"><div class="label">Meta do mês (${monthLabel(mesAtual)})</div><div class="value">${fmtBRL(metaMes)}</div><div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div><div class="sub">${pct}% atingido</div></div>
+    <div class="card kpi"><div class="label">Falta pra meta do mês</div><div class="value">${fmtBRL(faltaMes)}</div><div class="sub">${Math.ceil(faltaMes/ticketMedio())} vendas (ticket médio ${fmtBRL(ticketMedio())})</div></div>
+    <div class="card kpi"><div class="label">Clientes ativas / finalizadas</div><div class="value">${ativas} / ${finalizadas}</div><div class="sub">em atendimento / concluídas</div></div>
+    <div class="card kpi"><div class="label">Leads no funil (em aberto)</div><div class="value">${k.abertos}</div><div class="sub">taxa de conversão geral: ${k.taxaConversaoGeral}%</div></div>
+  </div>
+  <div class="grid grid-4" style="margin-top:16px;">
+    <div class="card kpi"><div class="label">Follow-ups hoje</div><div class="value">${followupsHoje}</div><div class="sub">${followupsAtrasados} atrasados</div></div>
+    <div class="card kpi"><div class="label">Investimento em tráfego</div><div class="value">${fmtBRL(investTrafego)}</div><div class="sub">CPL médio: ${fmtBRL(cpl)}</div></div>
+    <div class="card kpi"><div class="label">Alcance médio por post</div><div class="value">${mediaAlcance}</div><div class="sub">${posts.length} posts registrados</div></div>
+    <div class="card kpi"><div class="label">Salvamentos médios</div><div class="value">${mediaSalvos}</div><div class="sub">indicador-chave de valor percebido</div></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Metas do período</h3>
+    <div class="grid grid-3">
+      ${renderMiniMeta('Trimestre (3 meses)', periodoSchedule(3))}
+      ${renderMiniMeta('Semestre (6 meses)', periodoSchedule(6))}
+      ${renderMiniMeta('Ano (12 meses)', periodoSchedule(12))}
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Indicadores de CRM / Leads</h3>
+    <div class="grid grid-4">
+      <div class="kpi"><div class="label">Leads recebidos este mês</div><div class="value">${k.mes}</div><div class="sub">${k.ano} no ano · ${k.total} no total</div></div>
+      <div class="kpi"><div class="label">Taxa de conversão (mês)</div><div class="value">${k.taxaConversaoMes}%</div><div class="sub">geral: ${k.taxaConversaoGeral}%</div></div>
+      <div class="kpi"><div class="label">Leads perdidos (mês)</div><div class="value">${k.perdidosMes}</div><div class="sub">${k.perdidos} no total · ${k.taxaPerdaGeral}% de perda geral</div></div>
+      <div class="kpi"><div class="label">Fechados (ganhos) no mês</div><div class="value">${k.ganhosMes}</div><div class="sub">${k.ganhos} no total</div></div>
+    </div>
+    <div class="grid grid-3" style="margin-top:16px;">
+      <div class="kpi"><div class="label">Leads em aberto</div><div class="value">${k.abertos}</div><div class="sub">ainda em andamento no funil</div></div>
+      <div class="kpi"><div class="label">Taxa de indicação</div><div class="value">${k.taxaIndicacao}%</div><div class="sub">${k.porOrigem['Indicação']||0} leads via indicação</div></div>
+      <div class="kpi"><div class="label">Tempo médio até fechar</div><div class="value">${k.tempoMedioConversao!==null? k.tempoMedioConversao+' dias' : '—'}</div><div class="sub">${k.tempoMedioConversao!==null? 'baseado em '+k.amostraConversao+' conversão(ões)' : 'sem conversões suficientes ainda'}</div></div>
+    </div>
+    <div class="grid grid-2" style="margin-top:16px;">
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Leads por origem</div>
+        ${Object.keys(k.porOrigem).length? Object.entries(k.porOrigem).map(([o,n])=>`<div class="checklist-item"><span style="flex:1;">${o}</span><b>${n}</b></div>`).join('') : '<div class="empty-state">Sem leads cadastrados ainda.</div>'}
+      </div>
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Motivos de perda</div>
+        ${Object.keys(k.motivosPerda).length? Object.entries(k.motivosPerda).map(([m,n])=>`<div class="checklist-item"><span style="flex:1;">${m}</span><b>${n}</b></div>`).join('') : '<div class="empty-state">Nenhum lead perdido até agora.</div>'}
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">O que fazer agora</h3>
+    ${renderAgendaHoje()}
+  </div>
+  <div class="note" style="margin-top:16px;">Dashboard de negócio digital — os indicadores acima cruzam dados de Metas, CRM, Clientes, Tráfego e Conteúdo. Quanto mais você registrar nos outros módulos, mais completo fica este painel.</div>
+  `;
+}
+function renderMiniMeta(label, meses){
+  const meta = somaMeta(meses); const rec = somaReceita(meses); const falta = Math.max(meta-rec,0);
+  const pct = meta? Math.min(100, Math.round(rec/meta*100)) : 0;
+  return `<div><div class="small-muted" style="margin-bottom:4px;font-weight:600;">${label}</div>
+    <div style="font-size:20px;font-weight:700;">${fmtBRL(rec)} <span class="small-muted" style="font-size:12px;font-weight:400;">/ ${fmtBRL(meta)}</span></div>
+    <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div class="small-muted" style="margin-top:4px;">Falta: ${fmtBRL(falta)} · ${Math.ceil(falta/ticketMedio())} vendas</div></div>`;
+}
+function countFollowups(kind){
+  let n=0;
+  state.crm.leads.forEach(l=>{ if(!l.proximoFollowUp) return; const d=daysDiff(l.proximoFollowUp);
+    if(kind==='today' && d===0) n++; if(kind==='overdue' && d<0) n++;
+  });
+  state.clientes.forEach(cl=>{ if(!cl.proximoReminder) return; const d=daysDiff(cl.proximoReminder);
+    if(kind==='today' && d===0) n++; if(kind==='overdue' && d<0) n++;
+  });
+  return n;
+}
+function renderAgendaHoje(){
+  const items = [];
+  state.crm.leads.forEach(l=>{ if(l.proximoFollowUp){ const d=daysDiff(l.proximoFollowUp); if(d<=0) items.push({tipo:'Follow-up CRM', nome:l.nome, data:l.proximoFollowUp, atraso:d<0});} });
+  state.clientes.forEach(cl=>{ if(cl.proximoReminder){ const d=daysDiff(cl.proximoReminder); if(d<=0) items.push({tipo:'Reminder cliente ('+(cl.tipoReminder||'check-in')+')', nome:cl.nome, data:cl.proximoReminder, atraso:d<0}); } });
+  state.agenda.eventos.filter(e=>e.data===todayStr()).forEach(e=> items.push({tipo:'Agenda', nome:e.titulo, data:e.data, atraso:false}));
+  if(items.length===0) return '<div class="empty-state">Nada pendente pra hoje. 🎯</div>';
+  return `<table><thead><tr><th>Tipo</th><th>Quem/O quê</th><th>Data</th></tr></thead><tbody>${items.map(i=>`<tr><td>${i.tipo}</td><td>${i.nome}</td><td>${i.atraso?'<span class="tag overdue">Atrasado — '+fmtDate(i.data)+'</span>':fmtDate(i.data)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+/* ===================== METAS ===================== */
+function renderMetas(){
+  const rows = state.meta.schedule.map(s=>{
+    const rec = receitaPorMes()[s.month]||0; const falta=Math.max(s.goal-rec,0);
+    return `<tr><td>${monthLabel(s.month)}</td><td>${fmtBRL(s.goal)}</td><td>${fmtBRL(rec)}</td><td>${fmtBRL(falta)}</td><td>${Math.ceil(falta/ticketMedio())}</td>
+    <td><button class="btn ghost xs" onclick="editMetaMes('${s.month}')">Editar</button></td></tr>`;
+  }).join('');
+
+  return `
+  <div class="grid grid-3">
+    ${renderMiniMeta('Trimestre atual', periodoSchedule(3))}
+    ${renderMiniMeta('Semestre atual', periodoSchedule(6))}
+    ${renderMiniMeta('Ano atual', periodoSchedule(12))}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Ticket médio para cálculo de "nº de vendas"</h3>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <input id="ticketMedioInput" type="number" value="${state.meta.ticketMedio}" style="width:140px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;">
+      <button class="btn gold" onclick="salvarTicketMedio()">Salvar</button>
+      <span class="small-muted">Padrão sugerido: média dos seus 4 produtos (R$ 2.500 a R$ 7.000) = R$ 4.625</span>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Cronograma de metas mensais</h3><button class="btn gold xs" onclick="addMesMeta()">+ Adicionar mês</button></div>
+    <table><thead><tr><th>Mês</th><th>Meta</th><th>Realizado</th><th>Falta (R$)</th><th>Falta (vendas)</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Produtos / Serviços</h3><button class="btn gold xs" onclick="addProduto()">+ Adicionar produto</button></div>
+    <table><thead><tr><th>Produto</th><th>Preço</th><th>Descrição</th><th></th></tr></thead><tbody>
+    ${state.meta.produtos.map(p=>`<tr><td>${p.nome}</td><td>${fmtBRL(p.preco)}</td><td>${p.descricao||''}</td><td><button class="btn ghost xs" onclick="editProduto('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delProduto('${p.id}')">Excluir</button></td></tr>`).join('')}
+    </tbody></table>
+  </div>`;
+}
+function editMetaMes(month){
+  const item = state.meta.schedule.find(s=>s.month===month);
+  openModal('Editar meta — '+monthLabel(month), [{key:'goal', label:'Meta (R$)', type:'number', required:true}], item);
+  modalOnSave = (data)=>{ item.goal = Number(data.goal); save(); render(); };
+}
+function addMesMeta(){
+  const last = state.meta.schedule[state.meta.schedule.length-1];
+  const nextMonth = last ? addMonths(last.month,1) : todayStr().slice(0,7);
+  state.meta.schedule.push({month: nextMonth, goal: last?last.goal:15000});
+  save(); render();
+}
+function salvarTicketMedio(){ state.meta.ticketMedio = Number(document.getElementById('ticketMedioInput').value)||4625; save(); render(); }
+function addProduto(){
+  openModal('Novo produto', [{key:'nome',label:'Nome',type:'text',required:true},{key:'preco',label:'Preço (R$)',type:'number',required:true},{key:'descricao',label:'Descrição',type:'textarea'}]);
+  modalOnSave = (data)=>{ state.meta.produtos.push({id:uid(), nome:data.nome, preco:Number(data.preco), descricao:data.descricao}); save(); render(); };
+}
+function editProduto(id){
+  const p = state.meta.produtos.find(x=>x.id===id);
+  openModal('Editar produto', [{key:'nome',label:'Nome',type:'text',required:true},{key:'preco',label:'Preço (R$)',type:'number',required:true},{key:'descricao',label:'Descrição',type:'textarea'}], p);
+  modalOnSave = (data)=>{ Object.assign(p,{nome:data.nome, preco:Number(data.preco), descricao:data.descricao}); save(); render(); };
+}
+function delProduto(id){ if(!confirm('Excluir este produto?')) return; state.meta.produtos = state.meta.produtos.filter(x=>x.id!==id); save(); render(); }
+
+/* ===================== CRM ===================== */
+let crmDisplayMode = 'tabela';
+function setCrmDisplayMode(m){ crmDisplayMode = m; render(); }
+function renderCRM(){
+  if(crmView==='ficha' && crmFichaId){
+    const l = state.crm.leads.find(x=>x.id===crmFichaId);
+    if(l) return renderFichaLead(l);
+    crmView='funil'; crmFichaId=null;
+  }
+  const stages = state.crm.stages;
+  const leads = state.crm.leads;
+  const cadenciaInfo = `
+  <div class="note">
+  <b>Cadência de follow-up recomendada:</b> Novo Lead → sem resposta: D+1, D+3, D+7 (depois reduz prioridade) · Contato Iniciado → agendar diagnóstico em até D+2 · Diagnóstico Agendado → lembrete 1 dia antes + 1h antes · Diagnóstico Realizado → enviar proposta em até 24h · Proposta Enviada → D+1, D+3, D+5, D+7 (script pronto na aba Scripts) · Aguardando Decisão → reforçar valor a cada poucos dias até ela decidir · Sem Retorno / Momento Inadequado → reativar em D+30 · Perdido (qualquer motivo) → reativar em D+30 e D+90.
+  <br><br><b>Quando fechar uma venda</b>, marque o estágio como "Fechado - Ganho" — o botão "Virar cliente" aparece na linha e já leva os dados pro banco de Clientes. Clique em "Ficha" pra ver o perfil completo e registrar o histórico de interações do lead. No modo Kanban, arraste o cartão entre colunas pra mudar o estágio.
+  </div>`;
+  const rows = leads.map(l=>{
+    const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
+    let fuTag = '—';
+    if(fu!==null){ fuTag = `<span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span>`; }
+    return `<tr><td>${l.nome}</td><td>${fmtDate(l.dataCriacao)}</td><td>${l.contato||''}</td><td><span class="tag ${stageColorClass(l.estagio)}">${l.estagio}</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
+    <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.convertido? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
+  }).join('');
+  return `
+  ${cadenciaInfo}
+  <div class="card">
+    <div class="toolbar">
+      <h3 class="section-title" style="margin:0;">Funil de vendas (${leads.length} leads)</h3>
+      <div class="subtabs" style="margin:0;">
+        <div class="subtab ${crmDisplayMode==='tabela'?'active':''}" onclick="setCrmDisplayMode('tabela')">Tabela</div>
+        <div class="subtab ${crmDisplayMode==='kanban'?'active':''}" onclick="setCrmDisplayMode('kanban')">Kanban</div>
+      </div>
+      <button class="btn gold xs" onclick="addLead()">+ Novo lead</button>
+    </div>
+    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads) : (leads.length? `<table><thead><tr><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty-state">Nenhum lead cadastrado ainda. Clique em "Novo lead" para começar.</div>')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Resumo por estágio</h3>
+    <div class="grid grid-4">${stages.map((s,i)=>`<div class="kpi"><div class="label">${s}</div><div class="value">${leads.filter(l=>l.estagio===s).length}</div></div>`).join('')}</div>
+  </div>`;
+}
+function renderKanban(stages, leads){
+  if(!leads.length) return '<div class="empty-state">Nenhum lead cadastrado ainda. Clique em "Novo lead" para começar.</div>';
+  return `<div class="kanban-board">
+    ${stages.map(s=>{
+      const cards = leads.filter(l=>l.estagio===s);
+      const stageEsc = s.replace(/'/g,"\\'");
+      return `<div class="kanban-col" ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'${stageEsc}')">
+        <div class="kanban-col-header"><span>${s}</span><span>${cards.length}</span></div>
+        ${cards.length ? cards.map(l=>{
+          const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
+          const fuTag = fu!==null ? `<div style="margin-top:6px;"><span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span></div>` : '';
+          return `<div class="kanban-card" draggable="true" ondragstart="onCardDragStart(event,'${l.id}')" onclick="abrirFicha('${l.id}')">
+            <div class="nome">${l.nome}</div>
+            <div class="small-muted">${fmtBRL(l.valorEstimado)}</div>
+            ${fuTag}
+          </div>`;
+        }).join('') : '<div class="small-muted" style="padding:6px 0;">Vazio</div>'}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function onCardDragStart(ev, leadId){ ev.dataTransfer.setData('text/plain', leadId); ev.dataTransfer.effectAllowed = 'move'; }
+function onColDragOver(ev){ ev.preventDefault(); ev.currentTarget.style.background = '#e8ddc8'; }
+function onColDragLeave(ev){ ev.currentTarget.style.background = ''; }
+function onColDrop(ev, stageName){
+  ev.preventDefault();
+  ev.currentTarget.style.background = '';
+  const leadId = ev.dataTransfer.getData('text/plain');
+  const lead = state.crm.leads.find(l=>l.id===leadId);
+  if(lead && lead.estagio !== stageName){ lead.estagio = stageName; save(); render(); }
+}
+function leadFields(){
+  return [
+    {key:'nome', label:'Nome', type:'text', required:true},
+    {key:'contato', label:'Contato (WhatsApp/Instagram)', type:'text'},
+    {key:'origem', label:'Origem', type:'select', options:['Instagram','TikTok','WhatsApp','Indicação','Tráfego pago','Outro']},
+    {key:'estagio', label:'Estágio', type:'select', options: state.crm.stages},
+    {key:'valorEstimado', label:'Valor estimado (R$)', type:'number'},
+    {key:'proximoFollowUp', label:'Próximo follow-up', type:'date'},
+    {key:'profissao', label:'Profissão', type:'text'},
+    {key:'cidade', label:'Cidade', type:'text'},
+    {key:'estiloComunicacao', label:'Estilo de comunicação', type:'select', options:['Direto e objetivo','Caloroso e detalhista','Analítico/racional','Emocional/sensível','Ainda não sei']},
+    {key:'dores', label:'Dores / o que a incomoda hoje', type:'textarea'},
+    {key:'objetivos', label:'Objetivos / onde quer chegar', type:'textarea'},
+    {key:'notas', label:'Notas gerais', type:'textarea'}
+  ];
+}
+function addLead(){
+  openModal('Novo lead', leadFields(), {estagio: state.crm.stages[0]});
+  modalOnSave = (data)=>{ state.crm.leads.push(Object.assign({id:uid(), dataCriacao:todayStr(), convertido:false, historico:[]}, data, {valorEstimado:Number(data.valorEstimado||0)})); save(); render(); };
+}
+function editLead(id){
+  const l = state.crm.leads.find(x=>x.id===id);
+  openModal('Editar lead', leadFields(), l);
+  modalOnSave = (data)=>{ Object.assign(l, data, {valorEstimado:Number(data.valorEstimado||0)}); save(); render(); };
+}
+function delLead(id){ if(!confirm('Excluir este lead?')) return; state.crm.leads = state.crm.leads.filter(x=>x.id!==id); save(); render(); }
+
+/* Ficha do lead: perfil completo + histórico/timeline de interações */
+let crmView = 'funil';
+let crmFichaId = null;
+function abrirFicha(id){ crmFichaId = id; crmView = 'ficha'; render(); }
+function fecharFicha(){ crmView = 'funil'; crmFichaId = null; render(); }
+function historicoFields(){
+  return [
+    {key:'data', label:'Data', type:'date', required:true},
+    {key:'tipo', label:'Tipo', type:'select', options:['Mensagem','Ligação','Proposta enviada','Objeção','Pagamento','Reunião/Call','Outro']},
+    {key:'nota', label:'O que aconteceu', type:'textarea', required:true}
+  ];
+}
+function addHistorico(leadId){
+  openModal('Registrar interação', historicoFields(), {data: todayStr()});
+  modalOnSave = (data)=>{
+    const l = state.crm.leads.find(x=>x.id===leadId);
+    if(!l.historico) l.historico = [];
+    l.historico.push(Object.assign({id:uid()}, data));
+    save(); render();
+  };
+}
+function delHistorico(leadId, histId){
+  if(!confirm('Excluir esse registro do histórico?')) return;
+  const l = state.crm.leads.find(x=>x.id===leadId);
+  l.historico = (l.historico||[]).filter(h=>h.id!==histId);
+  save(); render();
+}
+function renderFichaLead(l){
+  const historico = (l.historico||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));
+  return `
+  <div class="toolbar"><button class="btn ghost xs" onclick="fecharFicha()">← Voltar ao funil</button></div>
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">${l.nome}</h3><button class="btn ghost xs" onclick="editLead('${l.id}')">Editar dados</button></div>
+    <div class="grid grid-3">
+      <div><div class="small-muted" style="font-weight:600;">Estágio</div><span class="tag ${stageColorClass(l.estagio)}">${l.estagio}</span></div>
+      <div><div class="small-muted" style="font-weight:600;">Contato</div>${l.contato||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Origem</div>${l.origem||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Profissão</div>${l.profissao||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Cidade</div>${l.cidade||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Estilo de comunicação</div>${l.estiloComunicacao||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Valor estimado</div>${fmtBRL(l.valorEstimado)}</div>
+      <div><div class="small-muted" style="font-weight:600;">Data de entrada</div>${fmtDate(l.dataCriacao)}</div>
+      <div><div class="small-muted" style="font-weight:600;">Próximo follow-up</div>${l.proximoFollowUp? fmtDate(l.proximoFollowUp):'—'}</div>
+    </div>
+    <div class="grid grid-2" style="margin-top:14px;">
+      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Dores</div><div style="font-size:13.5px;">${l.dores||'—'}</div></div>
+      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Objetivos</div><div style="font-size:13.5px;">${l.objetivos||'—'}</div></div>
+    </div>
+    ${l.notas? `<div style="margin-top:14px;"><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Notas gerais</div><div style="font-size:13.5px;">${l.notas}</div></div>` : ''}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Histórico / Timeline</h3><button class="btn gold xs" onclick="addHistorico('${l.id}')">+ Registrar interação</button></div>
+    ${historico.length? historico.map(h=>`<div class="script-card"><h4>${fmtDate(h.data)} — ${h.tipo}</h4><pre>${h.nota}</pre><button class="btn danger xs" onclick="delHistorico('${l.id}','${h.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nenhuma interação registrada ainda. Cada mensagem, ligação, proposta ou objeção pode virar um registro aqui.</div>'}
+  </div>`;
+}
+function converterCliente(id){
+  const l = state.crm.leads.find(x=>x.id===id);
+  l.convertido = true;
+  openModal('Converter em cliente', [
+    {key:'nome', label:'Nome', type:'text', required:true},
+    {key:'produto', label:'Produto contratado', type:'select', options: state.meta.produtos.map(p=>p.nome)},
+    {key:'valor', label:'Valor (R$)', type:'number'},
+    {key:'dataFechamento', label:'Data de fechamento', type:'date'}
+  ], {nome:l.nome, valor:l.valorEstimado, dataFechamento: todayStr()});
+  modalOnSave = (data)=>{
+    state.clientes.push({id:uid(), leadId:l.id, nome:data.nome, produto:data.produto, valor:Number(data.valor||0), dataFechamento:data.dataFechamento, status:'ativa', proximoReminder:'', tipoReminder:'check-in', notas:'', checklist:checklistParaProduto(data.produto)});
+    save(); render();
+  };
+}
+
+/* ===================== CLIENTES ===================== */
+let clientesFilter = 'todas';
+let clientesView = 'lista';
+let clientesChecklistId = null;
+function renderClientes(){
+  if(clientesView==='checklist' && clientesChecklistId){
+    const c = state.clientes.find(x=>x.id===clientesChecklistId);
+    if(c) return renderChecklistCliente(c);
+    clientesView='lista'; clientesChecklistId=null;
+  }
+  const list = state.clientes.filter(c=> clientesFilter==='todas' ? true : c.status===clientesFilter);
+  const rows = list.map(c=>{
+    const rem = c.proximoReminder? daysDiff(c.proximoReminder): null;
+    let remTag='—';
+    if(rem!==null) remTag = `<span class="tag ${rem<0?'overdue':(rem===0?'today':'upcoming')}">${fmtDate(c.proximoReminder)} (${c.tipoReminder||''})</span>`;
+    const checklist = c.checklist||[];
+    const done = checklist.filter(i=>i.done).length;
+    const progresso = checklist.length? `${done}/${checklist.length}` : '—';
+    return `<tr><td>${c.nome}</td><td>${c.produto||''}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${c.status}</span></td><td>${remTag}</td><td>${progresso}</td>
+    <td><button class="btn ghost xs" onclick="abrirChecklist('${c.id}')">Checklist</button> <button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCliente('${c.id}')">Excluir</button></td></tr>`;
+  }).join('');
+  return `
+  <div class="subtabs">
+    <div class="subtab ${clientesFilter==='todas'?'active':''}" onclick="setClientesFilter('todas')">Todas (${state.clientes.length})</div>
+    <div class="subtab ${clientesFilter==='ativa'?'active':''}" onclick="setClientesFilter('ativa')">Ativas (${state.clientes.filter(c=>c.status==='ativa').length})</div>
+    <div class="subtab ${clientesFilter==='finalizada'?'active':''}" onclick="setClientesFilter('finalizada')">Finalizadas (${state.clientes.filter(c=>c.status==='finalizada').length})</div>
+  </div>
+  <div class="note">Reminders sugeridos: check-in mensal durante o atendimento · pedir depoimento na entrega · reativação/upsell 90 dias após finalizada · aniversário (opcional). O checklist de execução é gerado automaticamente com base no produto contratado (etapas reais do Método ALMA®).</div>
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Clientes</h3><button class="btn gold xs" onclick="addCliente()">+ Nova cliente</button></div>
+    ${list.length? `<table><thead><tr><th>Nome</th><th>Produto</th><th>Valor</th><th>Status</th><th>Próx. reminder</th><th>Checklist</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty-state">Nenhuma cliente aqui ainda.</div>'}
+  </div>`;
+}
+function setClientesFilter(f){ clientesFilter=f; render(); }
+function clienteFields(){
+  return [
+    {key:'nome', label:'Nome', type:'text', required:true},
+    {key:'produto', label:'Produto contratado', type:'select', options: state.meta.produtos.map(p=>p.nome)},
+    {key:'valor', label:'Valor (R$)', type:'number'},
+    {key:'dataFechamento', label:'Data de fechamento/início', type:'date'},
+    {key:'status', label:'Status', type:'select', options:['ativa','finalizada']},
+    {key:'tipoReminder', label:'Tipo de reminder', type:'select', options:['check-in','depoimento','reativação/upsell','aniversário']},
+    {key:'proximoReminder', label:'Data do próximo reminder', type:'date'},
+    {key:'notas', label:'Notas', type:'textarea'}
+  ];
+}
+function addCliente(){
+  openModal('Nova cliente', clienteFields(), {status:'ativa', dataFechamento: todayStr()});
+  modalOnSave = (data)=>{ state.clientes.push(Object.assign({id:uid(), checklist:checklistParaProduto(data.produto)}, data, {valor:Number(data.valor||0)})); save(); render(); };
+}
+function editCliente(id){
+  const c = state.clientes.find(x=>x.id===id);
+  openModal('Editar cliente', clienteFields(), c);
+  modalOnSave = (data)=>{ Object.assign(c, data, {valor:Number(data.valor||0)}); save(); render(); };
+}
+function delCliente(id){ if(!confirm('Excluir esta cliente?')) return; state.clientes = state.clientes.filter(x=>x.id!==id); save(); render(); }
+
+/* Checklist de execução do projeto contratado (etapas reais do Método ALMA®) */
+function abrirChecklist(id){ clientesChecklistId = id; clientesView = 'checklist'; render(); }
+function fecharChecklist(){ clientesView = 'lista'; clientesChecklistId = null; render(); }
+function toggleChecklistItem(clienteId, idx){
+  const c = state.clientes.find(x=>x.id===clienteId);
+  if(!c.checklist) c.checklist = checklistParaProduto(c.produto);
+  c.checklist[idx].done = !c.checklist[idx].done;
+  save(); render();
+}
+function renderChecklistCliente(c){
+  const checklist = c.checklist||[];
+  const done = checklist.filter(i=>i.done).length;
+  const pct = checklist.length? Math.round(done/checklist.length*100) : 0;
+  return `
+  <div class="toolbar"><button class="btn ghost xs" onclick="fecharChecklist()">← Voltar pra lista de clientes</button></div>
+  <div class="card">
+    <h3 class="section-title">${c.nome} — ${c.produto||'Checklist de execução'}</h3>
+    <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div class="small-muted" style="margin-top:6px;">${done}/${checklist.length} etapas concluídas (${pct}%)</div>
+    <div style="margin-top:16px;">
+    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item ${item.done?'done':''}"><input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${c.id}',${idx})"><span style="flex:1;">${item.step}</span></div>`).join('') : '<div class="empty-state">Sem etapas definidas — edite a cliente e selecione o produto contratado.</div>'}
+    </div>
+  </div>`;
+}
+
+/* ===================== AGENDA ===================== */
+let agendaView = 'dia';
+let agendaRefDate = todayStr();
+function renderAgenda(){
+  const views = ['dia','semana','mes','ano'];
+  let body = '';
+  if(agendaView==='dia') body = renderAgendaDia();
+  if(agendaView==='semana') body = renderAgendaSemana();
+  if(agendaView==='mes') body = renderAgendaMes();
+  if(agendaView==='ano') body = renderAgendaAno();
+  return `
+  <div class="note phase2">Você usa Google Agenda — integração automática está planejada para a Fase 2 (quando o sistema for conectado à nuvem). Por enquanto, registre os compromissos aqui também para manter o dashboard completo.</div>
+  <div class="toolbar">
+    <div class="subtabs">${views.map(v=>`<div class="subtab ${agendaView===v?'active':''}" onclick="setAgendaView('${v}')">${v[0].toUpperCase()+v.slice(1)}</div>`).join('')}</div>
+    <button class="btn gold xs" onclick="addEvento()">+ Novo evento</button>
+  </div>
+  <div class="card">${body}</div>`;
+}
+function setAgendaView(v){ agendaView=v; render(); }
+function renderAgendaDia(){
+  const evs = state.agenda.eventos.filter(e=>e.data===agendaRefDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  return `<input type="date" value="${agendaRefDate}" onchange="agendaRefDate=this.value; render();" style="margin-bottom:12px;padding:7px;border:1px solid var(--border);border-radius:6px;">
+  ${evs.length? `<table><thead><tr><th>Hora</th><th>Título</th><th>Tipo</th><th></th></tr></thead><tbody>${evs.map(e=>`<tr><td>${e.hora||'—'}</td><td>${e.titulo}</td><td>${e.tipo||''}</td><td><button class="btn ghost xs" onclick="editEvento('${e.id}')">Editar</button> <button class="btn danger xs" onclick="delEvento('${e.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nada agendado nesse dia.</div>'}`;
+}
+function renderAgendaSemana(){
+  const base = new Date(agendaRefDate+'T00:00:00');
+  const dow = base.getDay();
+  const monday = new Date(base); monday.setDate(base.getDate()-((dow+6)%7));
+  let rows='';
+  for(let i=0;i<7;i++){
+    const d = new Date(monday); d.setDate(monday.getDate()+i);
+    const ds = d.toISOString().slice(0,10);
+    const evs = state.agenda.eventos.filter(e=>e.data===ds);
+    rows += `<tr><td style="font-weight:600;">${d.toLocaleDateString('pt-BR',{weekday:'short', day:'2-digit', month:'2-digit'})}</td><td>${evs.length? evs.map(e=>e.titulo+(e.hora?' ('+e.hora+')':'')).join(', ') : '<span class="small-muted">—</span>'}</td></tr>`;
+  }
+  return `<table><thead><tr><th>Dia</th><th>Eventos</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderAgendaMes(){
+  const [y,m] = agendaRefDate.slice(0,7).split('-').map(Number);
+  const first = new Date(y,m-1,1);
+  const startOffset = (first.getDay()+6)%7;
+  const daysInMonth = new Date(y,m,0).getDate();
+  let cells='';
+  for(let i=0;i<startOffset;i++) cells+='<div></div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs = state.agenda.eventos.filter(e=>e.data===ds);
+    cells += `<div class="calendar-day ${ds===todayStr()?'today':''}" onclick="agendaRefDate='${ds}'; agendaView='dia'; render();"><div class="num">${d}</div>${evs.length?`<div class="dot"></div>`:''}</div>`;
+  }
+  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+    <button class="btn ghost xs" onclick="agendaRefDate=addMonths(agendaRefDate.slice(0,7),-1)+'-01'; render();">←</button>
+    <b>${monthLabel(agendaRefDate.slice(0,7))}</b>
+    <button class="btn ghost xs" onclick="agendaRefDate=addMonths(agendaRefDate.slice(0,7),1)+'-01'; render();">→</button>
+  </div><div class="calendar-grid">${cells}</div>`;
+}
+function renderAgendaAno(){
+  const y = Number(agendaRefDate.slice(0,4));
+  let rows='';
+  for(let m=1;m<=12;m++){
+    const ym = `${y}-${String(m).padStart(2,'0')}`;
+    const count = state.agenda.eventos.filter(e=>e.data && e.data.slice(0,7)===ym).length;
+    rows += `<tr><td>${monthLabel(ym)}</td><td>${count} evento(s)</td></tr>`;
+  }
+  return `<table><thead><tr><th>Mês</th><th>Eventos</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function eventoFields(){
+  return [{key:'titulo',label:'Título',type:'text',required:true},{key:'data',label:'Data',type:'date',required:true},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'select',options:['Atendimento','Diagnóstico','Conteúdo','Reunião estrategista','Pessoal','Outro']}];
+}
+function addEvento(){ openModal('Novo evento', eventoFields(), {data: agendaRefDate}); modalOnSave=(data)=>{ state.agenda.eventos.push(Object.assign({id:uid()},data)); save(); render(); }; }
+function editEvento(id){ const e = state.agenda.eventos.find(x=>x.id===id); openModal('Editar evento', eventoFields(), e); modalOnSave=(data)=>{ Object.assign(e,data); save(); render(); }; }
+function delEvento(id){ if(!confirm('Excluir evento?')) return; state.agenda.eventos = state.agenda.eventos.filter(x=>x.id!==id); save(); render(); }
+
+/* ===================== ROTINA ===================== */
+let rotinaSubtab = 'diaria';
+function renderRotina(){
+  const subtabs = [['diaria','Diária'],['semanal','Semanal'],['mensal','Mensal'],['anual','Anual']];
+  const items = state.rotina[rotinaSubtab];
+  const isDaily = rotinaSubtab==='diaria';
+  return `
+  <div class="note">Rotina sugerida para empreendedora de alto faturamento em consultoria de imagem digital. Marque o que for concluindo e ajuste os itens conforme sua realidade.</div>
+  <div class="subtabs">${subtabs.map(([k,l])=>`<div class="subtab ${rotinaSubtab===k?'active':''}" onclick="setRotinaSubtab('${k}')">${l}</div>`).join('')}</div>
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Checklist ${subtabs.find(s=>s[0]===rotinaSubtab)[1]}</h3><button class="btn gold xs" onclick="addRotinaItem()">+ Item</button></div>
+    ${items.map((it,idx)=>{
+      const done = isDaily && state.rotina.completedToday.items[idx];
+      return `<div class="checklist-item ${done?'done':''}">${isDaily?`<input type="checkbox" ${done?'checked':''} onchange="toggleRotinaItem(${idx})">`:'<span style="width:16px;"></span>'}<span style="flex:1;">${it}</span><button class="btn ghost xs" onclick="delRotinaItem(${idx})">Excluir</button></div>`;
+    }).join('')}
+  </div>`;
+}
+function setRotinaSubtab(k){ rotinaSubtab=k; render(); }
+function toggleRotinaItem(idx){ state.rotina.completedToday.items[idx] = !state.rotina.completedToday.items[idx]; save(); render(); }
+function addRotinaItem(){
+  openModal('Novo item de rotina', [{key:'texto', label:'Descrição', type:'text', required:true}]);
+  modalOnSave = (data)=>{ state.rotina[rotinaSubtab].push(data.texto); save(); render(); };
+}
+function delRotinaItem(idx){ if(!confirm('Excluir item?')) return; state.rotina[rotinaSubtab].splice(idx,1); save(); render(); }
+
+/* ===================== UPDATES DO DIA ===================== */
+function renderUpdates(){
+  const entradas = [...state.updates.entradas].sort((a,b)=>b.data.localeCompare(a.data));
+  return `
+  <div class="note phase2">Automação total (buscar sozinho na internet todos os dias) está planejada para a Fase 2, com rotina agendada + banco de dados na nuvem. Por enquanto, registre aqui manualmente (ou peça pro Claude pesquisar e preencher pra você) as pautas quentes, novidades de IA/automação, ideias de conteúdo e reports de mercado do dia.</div>
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Updates registrados</h3><button class="btn gold xs" onclick="addUpdate()">+ Novo update</button></div>
+    ${entradas.length? entradas.map(u=>`<div class="script-card"><h4>${fmtDate(u.data)} — ${u.tag||'Geral'}</h4><pre>${u.conteudo}</pre><button class="btn danger xs" onclick="delUpdate('${u.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nenhum update registrado ainda.</div>'}
+  </div>`;
+}
+function addUpdate(){
+  openModal('Novo update do dia', [{key:'data',label:'Data',type:'date',required:true},{key:'tag',label:'Categoria',type:'select',options:['Conteúdo/Pauta quente','IA/Automação','Ideia de melhoria','Report de mercado']},{key:'conteudo',label:'Conteúdo',type:'textarea',required:true}], {data:todayStr()});
+  modalOnSave=(data)=>{ state.updates.entradas.push(Object.assign({id:uid()},data)); save(); render(); };
+}
+function delUpdate(id){ if(!confirm('Excluir update?')) return; state.updates.entradas = state.updates.entradas.filter(x=>x.id!==id); save(); render(); }
+
+/* ===================== BASE DE CONHECIMENTO ===================== */
+function renderBase(){
+  const cats = [...new Set(state.base.artigos.map(a=>a.categoria))];
+  return `
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Base de dados do negócio e do método</h3><button class="btn gold xs" onclick="addArtigo()">+ Novo artigo</button></div>
+    ${cats.map(cat=>`
+      <div style="margin-bottom:18px;">
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">${cat}</div>
+        ${state.base.artigos.filter(a=>a.categoria===cat).map(a=>`<div class="script-card"><h4>${a.titulo}</h4><pre>${a.conteudo}</pre><button class="btn ghost xs" onclick="editArtigo('${a.id}')">Editar</button> <button class="btn danger xs" onclick="delArtigo('${a.id}')">Excluir</button></div>`).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+function artigoFields(){ return [{key:'categoria',label:'Categoria',type:'text',required:true},{key:'titulo',label:'Título',type:'text',required:true},{key:'conteudo',label:'Conteúdo',type:'textarea',required:true}]; }
+function addArtigo(){ openModal('Novo artigo', artigoFields(), {categoria:'Metodologia'}); modalOnSave=(data)=>{ state.base.artigos.push(Object.assign({id:uid()},data)); save(); render(); }; }
+function editArtigo(id){ const a = state.base.artigos.find(x=>x.id===id); openModal('Editar artigo', artigoFields(), a); modalOnSave=(data)=>{ Object.assign(a,data); save(); render(); }; }
+function delArtigo(id){ if(!confirm('Excluir artigo?')) return; state.base.artigos = state.base.artigos.filter(x=>x.id!==id); save(); render(); }
+
+/* ===================== SCRIPTS ===================== */
+function renderScripts(){
+  return `
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Base de scripts</h3><button class="btn gold xs" onclick="addCategoriaScript()">+ Categoria</button></div>
+    ${state.scripts.categorias.map((cat,ci)=>`
+      <div style="margin-bottom:18px;">
+        <div class="toolbar" style="margin-bottom:8px;"><b style="text-transform:uppercase;font-size:12px;letter-spacing:.5px;color:var(--gold);">${cat.nome}</b><button class="btn ghost xs" onclick="addScriptItem(${ci})">+ Script</button></div>
+        ${cat.itens.map((it,ii)=>`<div class="script-card"><h4>${it.titulo}</h4><pre>${it.conteudo}</pre>
+          <button class="btn ghost xs" onclick="copiarScript(${ci},${ii})">Copiar</button>
+          <button class="btn ghost xs" onclick="editScriptItem(${ci},${ii})">Editar</button>
+          <button class="btn danger xs" onclick="delScriptItem(${ci},${ii})">Excluir</button></div>`).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+function addCategoriaScript(){
+  openModal('Nova categoria de scripts', [{key:'nome',label:'Nome da categoria',type:'text',required:true}]);
+  modalOnSave=(data)=>{ state.scripts.categorias.push({nome:data.nome, itens:[]}); save(); render(); };
+}
+function scriptFields(){ return [{key:'titulo',label:'Título',type:'text',required:true},{key:'conteudo',label:'Conteúdo do script',type:'textarea',required:true}]; }
+function addScriptItem(ci){ openModal('Novo script', scriptFields()); modalOnSave=(data)=>{ state.scripts.categorias[ci].itens.push(data); save(); render(); }; }
+function editScriptItem(ci,ii){ const it = state.scripts.categorias[ci].itens[ii]; openModal('Editar script', scriptFields(), it); modalOnSave=(data)=>{ Object.assign(it,data); save(); render(); }; }
+function delScriptItem(ci,ii){ if(!confirm('Excluir script?')) return; state.scripts.categorias[ci].itens.splice(ii,1); save(); render(); }
+function copiarScript(ci,ii){ const it = state.scripts.categorias[ci].itens[ii]; navigator.clipboard.writeText(it.conteudo).then(()=>alert('Script copiado!')); }
+
+/* ===================== FINANCEIRO ===================== */
+let financeiroSubtab = 'fluxo';
+function renderFinanceiro(){
+  const entradas = state.financeiro.entradas.reduce((a,e)=>a+Number(e.valor||0),0) + state.clientes.reduce((a,c)=>a+Number(c.valor||0),0);
+  const saidas = state.financeiro.saidas.reduce((a,e)=>a+Number(e.valor||0),0);
+  const lucro = entradas - saidas;
+  const margem = entradas? Math.round(lucro/entradas*100):0;
+  const subtabs = [['fluxo','Fluxo de Caixa'],['dre','DRE Simples'],['categorias','Categorias']];
+  let body='';
+  if(financeiroSubtab==='fluxo') body = renderFluxoCaixa();
+  if(financeiroSubtab==='dre') body = renderDRE(entradas, saidas, lucro, margem);
+  if(financeiroSubtab==='categorias') body = renderCategoriasFin();
+  return `
+  <div class="grid grid-4">
+    <div class="card kpi"><div class="label">Receita total (vendas + entradas)</div><div class="value">${fmtBRL(entradas)}</div></div>
+    <div class="card kpi"><div class="label">Despesas totais</div><div class="value">${fmtBRL(saidas)}</div></div>
+    <div class="card kpi"><div class="label">Lucro líquido</div><div class="value">${fmtBRL(lucro)}</div></div>
+    <div class="card kpi"><div class="label">Margem líquida</div><div class="value">${margem}%</div></div>
+  </div>
+  <div class="subtabs" style="margin-top:16px;">${subtabs.map(([k,l])=>`<div class="subtab ${financeiroSubtab===k?'active':''}" onclick="setFinSubtab('${k}')">${l}</div>`).join('')}</div>
+  <div class="card">${body}</div>`;
+}
+function setFinSubtab(k){ financeiroSubtab=k; render(); }
+function renderFluxoCaixa(){
+  const mov = [
+    ...state.financeiro.entradas.map(e=>({...e, tipo:'entrada'})),
+    ...state.financeiro.saidas.map(e=>({...e, tipo:'saída'})),
+    ...state.clientes.map(c=>({id:c.id, data:c.dataFechamento, valor:c.valor, categoria:'Venda: '+(c.produto||''), tipo:'entrada', origemCliente:true}))
+  ].filter(m=>m.data).sort((a,b)=>b.data.localeCompare(a.data));
+  return `<div class="toolbar"><button class="btn gold xs" onclick="addMovimento('entrada')">+ Entrada</button><button class="btn ghost xs" onclick="addMovimento('saida')">+ Saída</button></div>
+  ${mov.length? `<table><thead><tr><th>Data</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${mov.map(m=>`<tr><td>${fmtDate(m.data)}</td><td>${m.categoria||''}</td><td>${m.tipo}</td><td>${fmtBRL(m.valor)}</td><td>${m.origemCliente?'<span class="small-muted">via Clientes</span>':`<button class="btn danger xs" onclick="delMovimento('${m.tipo==='entrada'?'entradas':'saidas'}','${m.id}')">Excluir</button>`}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhum lançamento manual ainda (vendas de clientes aparecem aqui automaticamente).</div>'}`;
+}
+function addMovimento(tipo){
+  const cats = tipo==='entrada' ? ['Venda avulsa','Outro'] : [...state.financeiro.categoriasFixas, ...state.financeiro.categoriasVariaveis];
+  openModal('Novo lançamento — '+tipo, [{key:'data',label:'Data',type:'date',required:true},{key:'categoria',label:'Categoria',type:'select',options:cats},{key:'valor',label:'Valor (R$)',type:'number',required:true}], {data:todayStr()});
+  modalOnSave=(data)=>{ const arr = tipo==='entrada'? state.financeiro.entradas : state.financeiro.saidas; arr.push(Object.assign({id:uid()},data,{valor:Number(data.valor)})); save(); render(); };
+}
+function delMovimento(arrName,id){ if(!confirm('Excluir lançamento?')) return; state.financeiro[arrName] = state.financeiro[arrName].filter(x=>x.id!==id); save(); render(); }
+function renderDRE(entradas,saidas,lucro,margem){
+  return `<table><tbody>
+  <tr><td>Receita Bruta</td><td style="text-align:right;">${fmtBRL(entradas)}</td></tr>
+  <tr><td>(-) Despesas Fixas</td><td style="text-align:right;">${fmtBRL(state.financeiro.saidas.filter(s=>state.financeiro.categoriasFixas.includes(s.categoria)).reduce((a,s)=>a+Number(s.valor||0),0))}</td></tr>
+  <tr><td>(-) Despesas Variáveis</td><td style="text-align:right;">${fmtBRL(state.financeiro.saidas.filter(s=>state.financeiro.categoriasVariaveis.includes(s.categoria)).reduce((a,s)=>a+Number(s.valor||0),0))}</td></tr>
+  <tr style="font-weight:700;"><td>Lucro Líquido</td><td style="text-align:right;">${fmtBRL(lucro)}</td></tr>
+  <tr><td>Margem Líquida</td><td style="text-align:right;">${margem}%</td></tr>
+  </tbody></table>`;
+}
+function renderCategoriasFin(){
+  return `<div class="grid grid-2">
+  <div><h3 class="section-title">Despesas Fixas</h3>${state.financeiro.categoriasFixas.map((c,i)=>`<div class="checklist-item"><span style="flex:1;">${c}</span><button class="btn ghost xs" onclick="delCategoriaFin('categoriasFixas',${i})">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasFixas')">+ Categoria fixa</button></div>
+  <div><h3 class="section-title">Despesas Variáveis</h3>${state.financeiro.categoriasVariaveis.map((c,i)=>`<div class="checklist-item"><span style="flex:1;">${c}</span><button class="btn ghost xs" onclick="delCategoriaFin('categoriasVariaveis',${i})">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasVariaveis')">+ Categoria variável</button></div>
+  </div>`;
+}
+function addCategoriaFin(arrName){ openModal('Nova categoria', [{key:'nome',label:'Nome',type:'text',required:true}]); modalOnSave=(data)=>{ state.financeiro[arrName].push(data.nome); save(); render(); }; }
+function delCategoriaFin(arrName, idx){ if(!confirm('Excluir categoria?')) return; state.financeiro[arrName].splice(idx,1); save(); render(); }
+
+/* ===================== GESTÃO ===================== */
+function renderGestao(){
+  const tarefas = state.gestao.tarefas;
+  return `
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Tarefas & delegação</h3><button class="btn gold xs" onclick="addTarefa()">+ Tarefa</button></div>
+    ${tarefas.length? `<table><thead><tr><th>Tarefa</th><th>Responsável</th><th>Status</th><th>Prazo</th><th></th></tr></thead><tbody>${tarefas.map(t=>`<tr><td>${t.titulo}</td><td>${t.responsavel}</td><td><span class="tag ${t.status==='Concluído'?'status-finalizada':'status-ativa'}">${t.status}</span></td><td>${fmtDate(t.prazo)}</td><td><button class="btn ghost xs" onclick="editTarefa('${t.id}')">Editar</button> <button class="btn danger xs" onclick="delTarefa('${t.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">Nenhuma tarefa registrada.</div>'}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Reuniões com a estrategista</h3><button class="btn gold xs" onclick="addReuniao()">+ Reunião</button></div>
+    ${state.gestao.reunioes.length? state.gestao.reunioes.map(r=>`<div class="script-card"><h4>${fmtDate(r.data)}</h4><pre>${r.pauta}</pre><button class="btn danger xs" onclick="delReuniao('${r.id}')">Excluir</button></div>`).join(''):'<div class="empty-state">Nenhuma reunião registrada.</div>'}
+  </div>`;
+}
+function tarefaFields(){ return [{key:'titulo',label:'Tarefa',type:'text',required:true},{key:'responsavel',label:'Responsável',type:'select',options:['Eu','Estrategista','Equipe de execução']},{key:'status',label:'Status',type:'select',options:['A fazer','Em andamento','Concluído']},{key:'prazo',label:'Prazo',type:'date'}]; }
+function addTarefa(){ openModal('Nova tarefa', tarefaFields(), {status:'A fazer'}); modalOnSave=(data)=>{ state.gestao.tarefas.push(Object.assign({id:uid()},data)); save(); render(); }; }
+function editTarefa(id){ const t = state.gestao.tarefas.find(x=>x.id===id); openModal('Editar tarefa', tarefaFields(), t); modalOnSave=(data)=>{ Object.assign(t,data); save(); render(); }; }
+function delTarefa(id){ if(!confirm('Excluir tarefa?')) return; state.gestao.tarefas = state.gestao.tarefas.filter(x=>x.id!==id); save(); render(); }
+function addReuniao(){ openModal('Nova reunião', [{key:'data',label:'Data',type:'date',required:true},{key:'pauta',label:'Pauta / decisões',type:'textarea',required:true}], {data:todayStr()}); modalOnSave=(data)=>{ state.gestao.reunioes.push(Object.assign({id:uid()},data)); save(); render(); }; }
+function delReuniao(id){ if(!confirm('Excluir reunião?')) return; state.gestao.reunioes = state.gestao.reunioes.filter(x=>x.id!==id); save(); render(); }
+
+/* ===================== TRÁFEGO ===================== */
+function renderTrafego(){
+  const camps = state.trafego.campanhas;
+  return `
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Campanhas de tráfego pago</h3><button class="btn gold xs" onclick="addCampanha()">+ Campanha</button></div>
+    ${camps.length? `<table><thead><tr><th>Plataforma</th><th>Campanha</th><th>Investimento</th><th>Leads</th><th>CPL</th><th>Vendas geradas</th><th>CAC</th><th></th></tr></thead><tbody>${camps.map(c=>{
+      const cpl = c.leads>0? Number(c.investimento)/Number(c.leads):0;
+      const cac = c.vendas>0? Number(c.investimento)/Number(c.vendas):0;
+      return `<tr><td>${c.plataforma}</td><td>${c.nome}</td><td>${fmtBRL(c.investimento)}</td><td>${c.leads}</td><td>${fmtBRL(cpl)}</td><td>${c.vendas}</td><td>${fmtBRL(cac)}</td><td><button class="btn ghost xs" onclick="editCampanha('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCampanha('${c.id}')">Excluir</button></td></tr>`;
+    }).join('')}</tbody></table>` : '<div class="empty-state">Nenhuma campanha cadastrada ainda — sem orçamento definido no momento, estrutura pronta para quando começar.</div>'}
+  </div>`;
+}
+function campanhaFields(){ return [{key:'plataforma',label:'Plataforma',type:'select',options:['Meta Ads','Google Ads','TikTok Ads']},{key:'nome',label:'Nome da campanha',type:'text',required:true},{key:'investimento',label:'Investimento (R$)',type:'number'},{key:'leads',label:'Leads gerados',type:'number'},{key:'vendas',label:'Vendas geradas',type:'number'},{key:'observacoes',label:'Observações',type:'textarea'}]; }
+function addCampanha(){ openModal('Nova campanha', campanhaFields()); modalOnSave=(data)=>{ state.trafego.campanhas.push(Object.assign({id:uid()},data,{investimento:Number(data.investimento||0), leads:Number(data.leads||0), vendas:Number(data.vendas||0)})); save(); render(); }; }
+function editCampanha(id){ const c = state.trafego.campanhas.find(x=>x.id===id); openModal('Editar campanha', campanhaFields(), c); modalOnSave=(data)=>{ Object.assign(c,data,{investimento:Number(data.investimento||0), leads:Number(data.leads||0), vendas:Number(data.vendas||0)}); save(); render(); }; }
+function delCampanha(id){ if(!confirm('Excluir campanha?')) return; state.trafego.campanhas = state.trafego.campanhas.filter(x=>x.id!==id); save(); render(); }
+
+/* ===================== MÉTRICAS DE CONTEÚDO ===================== */
+function renderConteudo(){
+  const posts = state.conteudo.posts;
+  return `
+  <div class="note">Pilares de conteúdo sugeridos: ${state.conteudo.pilares.join(' · ')}. Priorize acompanhar <b>salvamentos</b> e <b>compartilhamentos</b> — são os sinais mais fortes de valor percebido pelo algoritmo hoje.</div>
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Posts registrados</h3><button class="btn gold xs" onclick="addPost()">+ Post</button></div>
+    ${posts.length? `<table><thead><tr><th>Data</th><th>Plataforma</th><th>Formato</th><th>Pilar</th><th>Alcance</th><th>Salvos</th><th>Compart.</th><th>Comentários</th><th>Cliques link</th><th></th></tr></thead><tbody>${posts.map(p=>`<tr><td>${fmtDate(p.data)}</td><td>${p.plataforma}</td><td>${p.formato}</td><td>${p.pilar||''}</td><td>${p.alcance||0}</td><td>${p.salvamentos||0}</td><td>${p.compartilhamentos||0}</td><td>${p.comentarios||0}</td><td>${p.cliques||0}</td><td><button class="btn ghost xs" onclick="editPost('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delPost('${p.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">Nenhum post registrado ainda.</div>'}
+  </div>`;
+}
+function postFields(){ return [
+  {key:'data',label:'Data',type:'date',required:true},
+  {key:'plataforma',label:'Plataforma',type:'select',options:['Instagram','TikTok','WhatsApp']},
+  {key:'formato',label:'Formato',type:'select',options:['Reels','Carrossel','Story','Post estático','Live']},
+  {key:'pilar',label:'Pilar de conteúdo',type:'select',options:state.conteudo.pilares},
+  {key:'alcance',label:'Alcance',type:'number'},
+  {key:'salvamentos',label:'Salvamentos',type:'number'},
+  {key:'compartilhamentos',label:'Compartilhamentos',type:'number'},
+  {key:'comentarios',label:'Comentários',type:'number'},
+  {key:'cliques',label:'Cliques no link',type:'number'},
+  {key:'aprendizado',label:'Aprendizado/nota',type:'textarea'}
+]; }
+function addPost(){ openModal('Novo post', postFields(), {data:todayStr()}); modalOnSave=(data)=>{ state.conteudo.posts.push(Object.assign({id:uid()},data)); save(); render(); }; }
+function editPost(id){ const p = state.conteudo.posts.find(x=>x.id===id); openModal('Editar post', postFields(), p); modalOnSave=(data)=>{ Object.assign(p,data); save(); render(); }; }
+function delPost(id){ if(!confirm('Excluir post?')) return; state.conteudo.posts = state.conteudo.posts.filter(x=>x.id!==id); save(); render(); }
+
+/* ===================== NUVEM (FASE 2) ===================== */
+function renderNuvem(){
+  const cfg = loadCloudConfig();
+  if(!cfg){
+    return `
+    <div class="note phase2">Siga os passos abaixo no site do Firebase (gratuito) para ativar o acesso compartilhado com a sua estrategista. É uma configuração única — depois disso, tudo roda sozinho.</div>
+    <div class="card">
+      <h3 class="section-title">Passo a passo (uma vez só)</h3>
+      <ol style="font-size:13.5px;line-height:1.95;">
+        <li>Acesse <b>console.firebase.google.com</b> e entre com uma conta Google (pode ser a sua já existente).</li>
+        <li>Clique em "Adicionar projeto", dê um nome (ex: alma-os) e crie o projeto (pode desativar o Google Analytics, não é necessário).</li>
+        <li>No menu lateral: <b>Build → Firestore Database → Criar banco de dados</b>. Escolha "Iniciar em modo de teste" e uma localização (ex: southamerica-east1 — mais perto do Brasil).</li>
+        <li>No menu lateral: <b>Build → Authentication → Vamos começar → aba Sign-in method → ative o provedor "Anônimo"</b>.</li>
+        <li>Clique no ícone de engrenagem (topo esquerdo) → <b>Configurações do projeto</b> → role até "Seus aplicativos" → clique no ícone Web <code>&lt;/&gt;</code> → registre um app (ex: alma-os-web).</li>
+        <li>Copie o objeto <code>firebaseConfig</code> que aparece na tela (o bloco com apiKey, authDomain, projectId etc).</li>
+        <li>Cole esse objeto no campo abaixo, invente um Workspace ID único, e clique em Conectar.</li>
+        <li>Depois de conectar, volte ao Firestore → aba <b>Regras</b> → cole as regras mostradas mais abaixo → Publicar.</li>
+        <li>Envie este mesmo arquivo (Sistema-ALMA.html) + o Workspace ID pra sua estrategista. Quando ela conectar com os mesmos dados, vocês passam a ver e editar tudo juntas.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3 class="section-title">Conectar</h3>
+      <div class="field"><label>Workspace ID (crie um código único, ex: alma-jana-2026-x7k)</label><input id="cloudWorkspaceId" type="text" placeholder="alma-jana-2026-x7k"></div>
+      <div class="field"><label>Firebase Config (cole o objeto inteiro, do jeito que aparece no Firebase)</label><textarea id="cloudConfigInput" placeholder='{ apiKey: "...", authDomain: "...", projectId: "...", ... }' style="min-height:130px;"></textarea></div>
+      <button class="btn gold" onclick="handleConectarCloud()">Conectar</button>
+    </div>
+    <div class="card">
+      <h3 class="section-title">Regras de segurança do Firestore</h3>
+      <p class="small-muted">Cole isso na aba "Regras" do Firestore e clique em Publicar:</p>
+      <pre style="background:var(--nude);padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /workspaces/{workspaceId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}</pre>
+      <p class="small-muted"><b>Importante:</b> isso libera leitura/escrita pra qualquer pessoa autenticada anonimamente que conheça o Workspace ID — ou seja, qualquer um que tenha este arquivo + o código. Não é segurança de nível bancário, mas é adequada pra uso interno entre você e sua estrategista. Nunca publique este arquivo em local público (ex: repositório público) depois de conectado.</p>
+    </div>`;
+  }
+  return `
+  <div class="grid grid-2">
+    <div class="card kpi"><div class="label">Status</div><div class="value">${cloudStatus==='connected'?'Conectado':(cloudStatus==='connecting'?'Conectando...':(cloudStatus==='error'?'Erro de conexão':'Desconectado'))}</div></div>
+    <div class="card kpi"><div class="label">Workspace ID</div><div class="value" style="font-size:16px;">${cfg.workspaceId}</div></div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <p class="small-muted">Compartilhe este mesmo arquivo (Sistema-ALMA.html) e o Workspace ID acima com sua estrategista. Quando ela abrir o arquivo dela e conectar com o mesmo Workspace ID + a mesma configuração do Firebase, vocês duas passam a ver e editar os mesmos dados quase em tempo real.</p>
+    <button class="btn danger" onclick="handleDesconectarCloud()">Desconectar</button>
+  </div>`;
+}
+function handleConectarCloud(){
+  const workspaceId = document.getElementById('cloudWorkspaceId').value.trim();
+  const raw = document.getElementById('cloudConfigInput').value.trim();
+  if(!workspaceId || !raw){ alert('Preencha o Workspace ID e a configuração do Firebase.'); return; }
+  let firebaseConfig;
+  try{ firebaseConfig = parseFirebaseConfigInput(raw); }catch(e){ alert('Não consegui entender a configuração colada. Confira se copiou o objeto inteiro, do jeito que aparece no Firebase (incluindo as chaves { }).'); return; }
+  if(!firebaseConfig || !firebaseConfig.apiKey){ alert('A configuração parece incompleta — confira se inclui apiKey, authDomain, projectId etc.'); return; }
+  connectCloud({workspaceId, firebaseConfig}, true);
+  render();
+}
+function handleDesconectarCloud(){
+  if(!confirm('Desconectar da nuvem? Os dados locais continuam salvos neste navegador.')) return;
+  clearCloudConfig(); render();
+}
+
+/* ===================== BACKUP & CONFIG ===================== */
+function renderConfig(){
+  return `
+  <div class="card">
+    <h3 class="section-title">Backup de dados</h3>
+    <p class="small-muted">Este arquivo guarda seus dados no navegador (localStorage). Isso NÃO é um backup de verdade — exporte com frequência (sugestão: toda semana, dentro da rotina semanal) e guarde o arquivo .json em local seguro (Google Drive, iCloud etc).</p>
+    <div class="toolbar">
+      <button class="btn gold" onclick="exportarBackup()">Exportar backup (.json)</button>
+      <label class="btn ghost" style="cursor:pointer;">Importar backup<input type="file" accept="application/json" style="display:none;" onchange="importarBackup(event)"></label>
+      <button class="btn danger" onclick="apagarTudo()">Apagar todos os dados</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Fase 2</h3>
+    <ul style="font-size:13.5px;line-height:1.8;">
+      <li><b>Acesso compartilhado com a estrategista</b> — já disponível na aba "Nuvem (Fase 2)". Siga o passo a passo lá.</li>
+      <li>Integração com Google Agenda — ainda planejada, não iniciada.</li>
+      <li>Rotina automática diária de pesquisa (pautas quentes, IA/automação, mercado) alimentando a aba "Updates do Dia" sozinha — ainda planejada, não iniciada.</li>
+    </ul>
+  </div>`;
+}
+function exportarBackup(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `backup-alma-os-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importarBackup(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const parsed = JSON.parse(e.target.result);
+      state = migrateState(parsed);
+      save(); render();
+      alert('Backup importado com sucesso!');
+    }catch(err){ alert('Arquivo inválido.'); }
+  };
+  reader.readAsText(file);
+}
+function apagarTudo(){
+  if(!confirm('Tem certeza? Isso apaga TODOS os dados salvos neste navegador. Exporte um backup antes se não tiver certeza.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = defaultState(); save(); render();
+}
+
+/* ===================== INIT ===================== */
+renderNav();
+render();
+updateCloudBadge();
+initCloudIfConfigured();
+</script>
+</body>
+</html>
