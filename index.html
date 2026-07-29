@@ -154,6 +154,25 @@
   .kanban-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;cursor:grab;}
   .kanban-card:active{cursor:grabbing;}
   .kanban-card .nome{font-weight:700;margin-bottom:4px;}
+
+  .notif-wrap, .search-wrap{position:relative;}
+  .notif-btn{position:relative;background:transparent;border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text-dark);cursor:pointer;}
+  .notif-btn:hover{background:var(--nude);}
+  .notif-badge{position:absolute;top:-7px;right:-7px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:16px;text-align:center;}
+  .search-input{font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--white);color:var(--text-dark);width:170px;}
+  .notif-panel, .dropdown-panel{display:none;position:absolute;top:calc(100% + 8px);right:0;width:340px;max-height:420px;overflow-y:auto;background:var(--white);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(22,20,18,.15);padding:10px;z-index:90;}
+  .notif-panel.open, .dropdown-panel.open{display:block;}
+  .notif-item, .dropdown-item{padding:9px 8px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12.5px;}
+  .notif-item:last-child, .dropdown-item:last-child{border-bottom:none;}
+  .notif-item:hover, .dropdown-item:hover{background:var(--cream);}
+  .notif-item .tipo, .dropdown-item .tipo{font-weight:700;color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:.3px;}
+
+  .toast-alma{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--cream);border:1px solid var(--gold);padding:12px 22px;border-radius:8px;font-size:13px;box-shadow:0 10px 30px rgba(22,20,18,.25);opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;z-index:200;max-width:80vw;}
+  .toast-alma.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast-alma.erro{border-color:var(--danger);}
+
+  #content.fade-in{animation:contentFadeIn .22s ease;}
+  @keyframes contentFadeIn{from{opacity:.4;transform:translateY(3px);}to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
 <body>
@@ -168,7 +187,16 @@
   <div id="main">
     <div id="topbar">
       <h2 id="page-title">Dashboard</h2>
-      <div style="display:flex;align-items:center;gap:14px;">
+      <div style="display:flex;align-items:center;gap:14px;position:relative;">
+        <div class="search-wrap">
+          <input id="busca-global-input" class="search-input" type="text" placeholder="Buscar em tudo... (⌘K)" oninput="onBuscaGlobalInput(this.value)" onfocus="onBuscaGlobalInput(this.value)">
+          <div id="busca-global-panel" class="dropdown-panel"></div>
+        </div>
+        <select id="usuario-atual-select" onchange="setUsuarioAtual(this.value)" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--text-dark);"></select>
+        <div class="notif-wrap">
+          <button class="notif-btn" onclick="toggleNotifPanel()">Notificações<span id="notif-badge" class="notif-badge" style="display:none;"></span></button>
+          <div id="notif-panel" class="notif-panel"></div>
+        </div>
         <div class="date-today" id="cloud-badge"></div>
         <div class="date-today" id="today-label"></div>
       </div>
@@ -211,6 +239,7 @@ function stageColorClass(estagio){
 function addMonths(ym, n){ const [y,m]=ym.split('-').map(Number); const d=new Date(y, m-1+n, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function monthLabel(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); }
 function daysDiff(dateStr){ const d1=new Date(todayStr()+'T00:00:00'); const d2=new Date(dateStr+'T00:00:00'); return Math.round((d2-d1)/86400000); }
+function addDays(dateStr, dias){ const d = new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+dias); return d.toISOString().slice(0,10); }
 
 /* ===================== ESTADO PADRÃO ===================== */
 function defaultScheduleMeta(){
@@ -267,6 +296,12 @@ function checklistParaProduto(nomeProduto){
   else etapas = ['Atendimento inicial','Execução','Entrega final'];
   if(nomeProduto && nomeProduto.indexOf('Visagismo')>=0) etapas = etapas.concat(CHECKLIST_BEAUTY);
   return etapas.map(step=>({step, done:false}));
+}
+/* Tarefas administrativas iniciais ao fechar uma venda — mesmo padrão do checklist, reaproveitado na automação de conversão lead→cliente (Etapa 3) */
+function tarefasIniciaisParaProduto(nomeProduto){
+  const titulos = ['Enviar mensagem de boas-vindas e próximos passos','Enviar formulário de imersão / exercícios de estilo','Agendar primeiro atendimento'];
+  if(nomeProduto && nomeProduto.indexOf('Visagismo')>=0) titulos.push('Agendar mapeamento facial e aula de automake');
+  return titulos;
 }
 
 function defaultState(){
@@ -348,10 +383,10 @@ function defaultState(){
     updates: { entradas: [] },
     financeiro: {
       entradas: [], saidas: [],
-      categoriasFixas: ['Ferramentas/Softwares','Contabilidade','Assessoria/Estrategista','Tráfego pago (mínimo fixo)','Educação/Cursos','Aluguel/Espaço'],
-      categoriasVariaveis: ['Produção de conteúdo','Materiais de atendimento','Comissões','Impostos']
+      categoriasFixas: ['Ferramentas/Softwares','Contabilidade','Assessoria/Estrategista','Tráfego pago (mínimo fixo)','Educação/Cursos','Aluguel/Espaço'].map(nome=>({id:uid(), nome, valor:0})),
+      categoriasVariaveis: ['Produção de conteúdo','Materiais de atendimento','Comissões','Impostos'].map(nome=>({id:uid(), nome, valor:0}))
     },
-    gestao: { tarefas: [], reunioes: [] },
+    gestao: { tarefas: [], reunioes: [], equipe: [{id:uid(), nome:'Janaína Bilibio', perfil:'Administrador'}] },
     trafego: { campanhas: [] },
     conteudo: {
       posts: [],
@@ -387,7 +422,12 @@ function migrateState(s){
   if(!s.contentV1Applied) applyContentV1(merged);
   d.crm.stages.forEach(st=>{ if(!merged.crm.stages.includes(st)) merged.crm.stages.push(st); });
   merged.crm.leads.forEach(l=>{ if(!l.historico) l.historico = []; });
-  merged.clientes.forEach(c=>{ if(!c.checklist) c.checklist = checklistParaProduto(c.produto); });
+  merged.clientes.forEach(c=>{ if(!c.checklist) c.checklist = checklistParaProduto(c.produto); if(!c.historico) c.historico = []; });
+  merged.gestao.tarefas.forEach(t=>{ if(!t.historico) t.historico = []; if(!t.checklist) t.checklist = []; if(!t.status) t.status = 'A fazer'; });
+  if(!merged.gestao.equipe || !merged.gestao.equipe.length) merged.gestao.equipe = [{id:uid(), nome:'Janaína Bilibio', perfil:'Administrador'}];
+  ['categoriasFixas','categoriasVariaveis'].forEach(arrName=>{
+    merged.financeiro[arrName] = merged.financeiro[arrName].map(c=> typeof c === 'string' ? {id:uid(), nome:c, valor:0} : c);
+  });
   return merged;
 }
 
@@ -418,6 +458,93 @@ function applyContentV1(merged){
 }
 function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); pushToCloudDebounced(); }
 
+/* Identidade local de quem está usando o navegador agora — não sincroniza com a nuvem, só assina histórico/comentários. Base para perfis futuros (Administrador, Estrategista, Secretária, Social Seller, Assistente) sem precisar de login. */
+const USUARIO_ATUAL_KEY = 'alma_os_usuario_atual';
+function getUsuarioAtual(){ return localStorage.getItem(USUARIO_ATUAL_KEY) || ''; }
+function setUsuarioAtual(nome){ localStorage.setItem(USUARIO_ATUAL_KEY, nome); renderUsuarioAtualBadge(); }
+function renderUsuarioAtualBadge(){
+  const el = document.getElementById('usuario-atual-select'); if(!el) return;
+  const atual = getUsuarioAtual();
+  el.innerHTML = `<option value="">Quem é você?</option>` + state.gestao.equipe.map(e=>`<option value="${escHtml(e.nome)}" ${e.nome===atual?'selected':''}>${escHtml(e.nome)} (${escHtml(e.perfil)})</option>`).join('');
+}
+
+/* Sino de notificações — reaproveita getAtencaoHoje(), a mesma função do card do Dashboard. */
+let atencaoHojeCache = [];
+function updateNotifBadge(){
+  const badge = document.getElementById('notif-badge'); if(!badge) return;
+  const urgentes = getAtencaoHoje().filter(i=>i.atraso).length;
+  if(urgentes>0){ badge.textContent = String(urgentes); badge.style.display='inline-block'; }
+  else { badge.style.display='none'; }
+}
+function renderNotifPanelContent(){
+  const panel = document.getElementById('notif-panel');
+  atencaoHojeCache = getAtencaoHoje();
+  panel.innerHTML = atencaoHojeCache.length ? atencaoHojeCache.map((i,idx)=>`<div class="notif-item" onclick="clicarNotif(${idx})"><div class="tipo">${escHtml(i.tipo)}${i.atraso?' · atrasado':''}</div><div>${escHtml(i.nome)}</div><div class="small-muted">${fmtDate(i.data)}</div>${i.concluir?`<button class="btn ghost xs" style="margin-top:6px;" onclick="event.stopPropagation(); concluirItemAtencao(${idx}); renderNotifPanelContent();">Concluir</button>`:''}</div>`).join('') : '<div class="empty-state">Nada pendente agora.</div>';
+}
+function toggleNotifPanel(){
+  const panel = document.getElementById('notif-panel');
+  if(panel.classList.contains('open')){ panel.classList.remove('open'); return; }
+  renderNotifPanelContent();
+  panel.classList.add('open');
+}
+function clicarNotif(idx){
+  const item = atencaoHojeCache[idx];
+  document.getElementById('notif-panel').classList.remove('open');
+  if(item && item.link) item.link();
+}
+function concluirItemAtencao(idx){
+  const item = atencaoHojeCache[idx];
+  if(item && item.concluir) item.concluir();
+}
+
+/* Busca global — varre CRM, Clientes, Tarefas, Agenda, Base de Conhecimento, Scripts e Financeiro. Reaproveita as mesmas fichas (abrirFicha/abrirChecklist/abrirFichaTarefa) já usadas em todo o resto do sistema. */
+let buscaGlobalCache = [];
+function buscaGlobal(query){
+  const q = String(query||'').trim().toLowerCase();
+  if(!q) return [];
+  const bate = (...vals) => vals.some(v => v!==undefined && v!==null && String(v).toLowerCase().indexOf(q)>=0);
+  const results = [];
+  state.crm.leads.forEach(l=>{ if(bate(l.nome, l.contato, l.dores, l.objetivos, l.notas, l.profissao, l.cidade)) results.push({tipo:'Lead (CRM)', titulo:l.nome, sub:l.estagio, link:()=>abrirFicha(l.id)}); });
+  state.clientes.forEach(c=>{ if(bate(c.nome, c.notas, c.produto)) results.push({tipo:'Cliente', titulo:c.nome, sub:c.produto||c.status, link:()=>abrirChecklist(c.id)}); });
+  state.gestao.tarefas.forEach(t=>{ if(bate(t.titulo, t.categoria, t.responsavel)) results.push({tipo:'Tarefa', titulo:t.titulo, sub:t.status, link:()=>abrirFichaTarefa(t.id)}); });
+  state.agenda.eventos.forEach(e=>{ if(bate(e.titulo, e.observacoes, e.local)) results.push({tipo:'Agenda', titulo:e.titulo, sub:fmtDate(e.data), link:()=>{ agendaRefDate=e.data; agendaView='dia'; setTab('agenda'); }}); });
+  state.base.artigos.forEach(a=>{ if(bate(a.titulo, a.conteudo)) results.push({tipo:'Base de Conhecimento', titulo:a.titulo, sub:a.categoria, link:()=>setTab('base')}); });
+  state.scripts.categorias.forEach(cat=>{ cat.itens.forEach(it=>{ if(bate(it.titulo, it.conteudo)) results.push({tipo:'Script', titulo:it.titulo, sub:cat.nome, link:()=>setTab('scripts')}); }); });
+  [...state.financeiro.entradas.map(e=>({...e,mov:'entrada'})), ...state.financeiro.saidas.map(e=>({...e,mov:'saída'}))].forEach(f=>{ if(bate(f.categoria)) results.push({tipo:'Financeiro', titulo:(f.categoria||'')+' ('+f.mov+')', sub:fmtDate(f.data)+' · '+fmtBRL(f.valor), link:()=>setTab('financeiro')}); });
+  return results.slice(0,30);
+}
+function onBuscaGlobalInput(query){
+  const panel = document.getElementById('busca-global-panel');
+  buscaGlobalCache = buscaGlobal(query);
+  if(!query || !query.trim()){ panel.classList.remove('open'); return; }
+  panel.innerHTML = buscaGlobalCache.length ? buscaGlobalCache.map((r,idx)=>`<div class="dropdown-item" onclick="clicarBusca(${idx})"><div class="tipo">${escHtml(r.tipo)}</div><div>${escHtml(r.titulo)}</div><div class="small-muted">${escHtml(r.sub)}</div></div>`).join('') : '<div class="empty-state">Nada encontrado.</div>';
+  panel.classList.add('open');
+}
+function clicarBusca(idx){
+  const item = buscaGlobalCache[idx];
+  document.getElementById('busca-global-panel').classList.remove('open');
+  document.getElementById('busca-global-input').value = '';
+  if(item && item.link) item.link();
+}
+document.addEventListener('click', function(ev){
+  const wrap = document.querySelector('.notif-wrap');
+  const panel = document.getElementById('notif-panel');
+  if(wrap && panel && panel.classList.contains('open') && !wrap.contains(ev.target)) panel.classList.remove('open');
+  const searchWrap = document.querySelector('.search-wrap');
+  const searchPanel = document.getElementById('busca-global-panel');
+  if(searchWrap && searchPanel && searchPanel.classList.contains('open') && !searchWrap.contains(ev.target)) searchPanel.classList.remove('open');
+});
+/* Command Palette leve — Cmd/Ctrl+K abre e foca a mesma busca global, sem estrutura nova. */
+document.addEventListener('keydown', function(ev){
+  if((ev.metaKey || ev.ctrlKey) && String(ev.key).toLowerCase()==='k'){
+    ev.preventDefault();
+    const input = document.getElementById('busca-global-input');
+    input.focus();
+    if(typeof input.select==='function') input.select();
+    onBuscaGlobalInput(input.value);
+  }
+});
+
 /* ===================== SINCRONIZAÇÃO NA NUVEM (FASE 2) ===================== */
 const CLOUD_CONFIG_KEY = 'alma_os_cloud_config';
 let cloudDb = null, cloudUnsub = null, cloudStatus = 'disconnected', cloudPushTimer = null, suppressCloudEcho = false;
@@ -446,7 +573,7 @@ function parseFirebaseConfigInput(raw){
 function connectCloud(cfg, isFirstConnect){
   if(typeof firebase === 'undefined'){
     cloudStatus = 'error'; updateCloudBadge();
-    alert('Não foi possível carregar o Firebase — verifique sua conexão com a internet e tente novamente.');
+    mostrarToast('Não foi possível carregar o Firebase — verifique sua conexão com a internet e tente novamente.', 'erro');
     return;
   }
   try{
@@ -465,6 +592,7 @@ function connectCloud(cfg, isFirstConnect){
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
             suppressCloudEcho = false;
             render();
+            renderUsuarioAtualBadge();
           }
         } else if(isFirstConnect){
           docRef.set({state: state, updatedAt: Date.now()});
@@ -472,8 +600,8 @@ function connectCloud(cfg, isFirstConnect){
         cloudStatus = 'connected'; updateCloudBadge();
       }, err=>{ console.error(err); cloudStatus='error'; updateCloudBadge(); });
       saveCloudConfig(cfg);
-    }).catch(err=>{ cloudStatus='error'; updateCloudBadge(); alert('Erro ao autenticar na nuvem: '+err.message); });
-  }catch(e){ cloudStatus='error'; updateCloudBadge(); alert('Erro ao conectar: '+e.message); }
+    }).catch(err=>{ cloudStatus='error'; updateCloudBadge(); mostrarToast('Erro ao autenticar na nuvem: '+err.message, 'erro'); });
+  }catch(e){ cloudStatus='error'; updateCloudBadge(); mostrarToast('Erro ao conectar: '+e.message, 'erro'); }
 }
 
 function pushToCloudDebounced(){
@@ -493,28 +621,34 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
 /* ===================== NAVEGAÇÃO ===================== */
 const TABS = [
-  {id:'dashboard', label:'Dashboard'},
-  {id:'metas', label:'Metas & Números'},
-  {id:'crm', label:'CRM'},
-  {id:'clientes', label:'Clientes'},
-  {id:'agenda', label:'Agenda'},
-  {id:'rotina', label:'Rotina'},
-  {id:'updates', label:'Updates do Dia'},
-  {id:'base', label:'Base de Conhecimento'},
-  {id:'scripts', label:'Scripts'},
-  {id:'financeiro', label:'Financeiro'},
-  {id:'gestao', label:'Gestão'},
-  {id:'trafego', label:'Tráfego Pago'},
-  {id:'conteudo', label:'Métricas de Conteúdo'},
-  {id:'nuvem', label:'Nuvem (Fase 2)'},
-  {id:'config', label:'Backup & Config'}
+  {id:'dashboard', label:'Dashboard', grupo:'Visão Geral'},
+  {id:'metas', label:'Metas & Números', grupo:'Visão Geral'},
+  {id:'crm', label:'CRM', grupo:'Vendas'},
+  {id:'clientes', label:'Clientes', grupo:'Vendas'},
+  {id:'agenda', label:'Agenda', grupo:'Operação'},
+  {id:'rotina', label:'Rotina', grupo:'Operação'},
+  {id:'gestao', label:'Gestão', grupo:'Operação'},
+  {id:'updates', label:'Updates do Dia', grupo:'Conteúdo & Marketing'},
+  {id:'base', label:'Base de Conhecimento', grupo:'Conteúdo & Marketing'},
+  {id:'scripts', label:'Scripts', grupo:'Conteúdo & Marketing'},
+  {id:'trafego', label:'Tráfego Pago', grupo:'Conteúdo & Marketing'},
+  {id:'conteudo', label:'Métricas de Conteúdo', grupo:'Conteúdo & Marketing'},
+  {id:'financeiro', label:'Financeiro', grupo:'Financeiro'},
+  {id:'nuvem', label:'Nuvem (Fase 2)', grupo:'Sistema'},
+  {id:'config', label:'Backup & Config', grupo:'Sistema'}
 ];
 let activeTab = 'dashboard';
 let crmSubtab = null;
 
 function renderNav(){
   const nav = document.getElementById('nav');
-  nav.innerHTML = TABS.map(t=>`<div class="nav-item ${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</div>`).join('');
+  let html = '';
+  let ultimoGrupo = null;
+  TABS.forEach(t=>{
+    if(t.grupo !== ultimoGrupo){ html += `<div class="nav-section-label">${t.grupo}</div>`; ultimoGrupo = t.grupo; }
+    html += `<div class="nav-item ${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</div>`;
+  });
+  nav.innerHTML = html;
 }
 function setTab(id){ activeTab = id; document.getElementById('page-title').textContent = TABS.find(t=>t.id===id).label; renderNav(); render(); }
 
@@ -526,7 +660,8 @@ function openModal(title, fields, initial={}){
   form.innerHTML = fields.map(f=>{
     const val = initial[f.key] !== undefined ? initial[f.key] : (f.default!==undefined?f.default:'');
     if(f.type==='select'){
-      return `<div class="field"><label>${f.label}</label><select name="${f.key}">${f.options.map(o=>`<option value="${escHtml(o)}" ${o===val?'selected':''}>${escHtml(o)}</option>`).join('')}</select></div>`;
+      const opts = f.options.map(o=> (o!==null && typeof o==='object') ? o : {value:o, label:o});
+      return `<div class="field"><label>${f.label}</label><select name="${f.key}">${opts.map(o=>`<option value="${escHtml(o.value)}" ${String(o.value)===String(val)?'selected':''}>${escHtml(o.label)}</option>`).join('')}</select></div>`;
     }
     if(f.type==='textarea'){
       return `<div class="field"><label>${f.label}</label><textarea name="${f.key}">${escHtml(val)}</textarea></div>`;
@@ -540,9 +675,51 @@ function openModal(title, fields, initial={}){
     fields.forEach(f=>{ data[f.key] = form.elements[f.key].value; });
     modalOnSave(data);
     closeModal();
+    mostrarToast('Salvo!');
   };
 }
 function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+
+/* Padrão comum de criar/editar um registro simples (sem coerção numérica nem efeitos colaterais extras) — reaproveitado pelas funções addX/editX mais diretas, pra não repetir a mesma orquestração de openModal+modalOnSave em cada uma. */
+function criarRegistro(colecaoArr, tituloModal, fieldsFn, initial, extras){
+  openModal(tituloModal, fieldsFn(), initial||{});
+  modalOnSave = (data)=>{ colecaoArr.push(Object.assign({id:uid()}, extras||{}, data)); save(); render(); };
+}
+function editarRegistro(item, tituloModal, fieldsFn, campoRastreado){
+  const valorAntes = campoRastreado ? item[campoRastreado] : undefined;
+  openModal(tituloModal, fieldsFn(), item);
+  modalOnSave = (data)=>{
+    Object.assign(item, data);
+    if(campoRastreado) logMudancaStatus(item, 'Status', valorAntes, data[campoRastreado]);
+    save(); render();
+  };
+}
+
+/* Confirmação no padrão visual do sistema — substitui o confirm() nativo do navegador, reaproveitando o mesmo modal-overlay já usado pelos formulários. */
+function confirmarAcao(mensagem, aoConfirmar, opcoes){
+  opcoes = opcoes || {};
+  document.getElementById('modalTitle').textContent = opcoes.titulo || 'Confirmar ação';
+  const form = document.getElementById('modalForm');
+  form.innerHTML = `<p style="font-size:14px;color:var(--text-dark);line-height:1.5;margin:0;">${escHtml(mensagem)}</p>
+    <div class="modal-actions"><button type="button" class="btn ghost" onclick="closeModal()">Cancelar</button><button type="submit" class="btn ${opcoes.perigo?'danger':'gold'}">${escHtml(opcoes.textoConfirmar||'Confirmar')}</button></div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+  form.onsubmit = (e)=>{ e.preventDefault(); closeModal(); aoConfirmar(); };
+}
+
+/* Toast no padrão visual do sistema — substitui o alert() nativo do navegador para mensagens informativas (não bloqueia, some sozinho). */
+function mostrarToast(mensagem, tipo){
+  let toast = document.getElementById('toast-alma');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'toast-alma';
+    toast.className = 'toast-alma';
+    document.body.appendChild(toast);
+  }
+  toast.className = 'toast-alma' + (tipo==='erro' ? ' erro' : '') + ' show';
+  toast.textContent = mensagem;
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(()=>{ toast.classList.remove('show'); }, tipo==='erro' ? 5000 : 3000);
+}
 
 /* ===================== RENDER PRINCIPAL ===================== */
 function render(){
@@ -550,6 +727,10 @@ function render(){
   document.getElementById('today-label').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
   const renderers = {dashboard:renderDashboard, metas:renderMetas, crm:renderCRM, clientes:renderClientes, agenda:renderAgenda, rotina:renderRotina, updates:renderUpdates, base:renderBase, scripts:renderScripts, financeiro:renderFinanceiro, gestao:renderGestao, trafego:renderTrafego, conteudo:renderConteudo, nuvem:renderNuvem, config:renderConfig};
   c.innerHTML = renderers[activeTab]();
+  updateNotifBadge();
+  c.classList.remove('fade-in');
+  void c.offsetWidth;
+  c.classList.add('fade-in');
 }
 
 /* ===================== CÁLCULOS COMPARTILHADOS ===================== */
@@ -663,7 +844,7 @@ function renderDashboard(){
     <div class="card kpi"><div class="label">Leads no funil (em aberto)</div><div class="value">${k.abertos}</div><div class="sub">taxa de conversão geral: ${k.taxaConversaoGeral}%</div></div>
   </div>
   <div class="grid grid-4" style="margin-top:16px;">
-    <div class="card kpi"><div class="label">Follow-ups hoje</div><div class="value">${followupsHoje}</div><div class="sub">${followupsAtrasados} atrasados</div></div>
+    <div class="card kpi" style="${followupsAtrasados>0?'border-color:var(--danger);background:#fdf5f4;':''}"><div class="label">Follow-ups hoje</div><div class="value">${followupsHoje}</div><div class="sub" style="${followupsAtrasados>0?'color:var(--danger);':''}">${followupsAtrasados} atrasados</div></div>
     <div class="card kpi"><div class="label">Investimento em tráfego</div><div class="value">${fmtBRL(investTrafego)}</div><div class="sub">CPL médio: ${fmtBRL(cpl)}</div></div>
     <div class="card kpi"><div class="label">Alcance médio por post</div><div class="value">${mediaAlcance}</div><div class="sub">${posts.length} posts registrados</div></div>
     <div class="card kpi"><div class="label">Salvamentos médios</div><div class="value">${mediaSalvos}</div><div class="sub">indicador-chave de valor percebido</div></div>
@@ -704,7 +885,7 @@ function renderDashboard(){
   </div>
 
   <div class="card" style="margin-top:16px;">
-    <h3 class="section-title">O que fazer agora</h3>
+    <h3 class="section-title">O que precisa da minha atenção hoje</h3>
     ${renderAgendaHoje()}
   </div>
   <div class="note" style="margin-top:16px;">Dashboard de negócio digital — os indicadores acima cruzam dados de Metas, CRM, Clientes, Tráfego e Conteúdo. Quanto mais você registrar nos outros módulos, mais completo fica este painel.</div>
@@ -728,13 +909,60 @@ function countFollowups(kind){
   });
   return n;
 }
-function renderAgendaHoje(){
+/* Central de atenção — uma função só, usada no card "O que precisa da minha atenção hoje" (Dashboard) E no sino de notificações da topbar. Não são duas lógicas paralelas. */
+function diasSemAtividade(historico, dataFallback){
+  const datas = (historico||[]).map(h=>h.data).filter(Boolean);
+  const maisRecente = datas.length ? datas.slice().sort().reverse()[0] : dataFallback;
+  return maisRecente ? -daysDiff(maisRecente) : null;
+}
+function getAtencaoHoje(){
   const items = [];
-  state.crm.leads.forEach(l=>{ if(l.proximoFollowUp){ const d=daysDiff(l.proximoFollowUp); if(d<=0) items.push({tipo:'Follow-up CRM', nome:l.nome, data:l.proximoFollowUp, atraso:d<0});} });
-  state.clientes.forEach(cl=>{ if(cl.proximoReminder){ const d=daysDiff(cl.proximoReminder); if(d<=0) items.push({tipo:'Reminder cliente ('+(cl.tipoReminder||'check-in')+')', nome:cl.nome, data:cl.proximoReminder, atraso:d<0}); } });
-  state.agenda.eventos.filter(e=>e.data===todayStr()).forEach(e=> items.push({tipo:'Agenda', nome:e.titulo, data:e.data, atraso:false}));
-  if(items.length===0) return '<div class="empty-state">Nada pendente pra hoje. 🎯</div>';
-  return `<table><thead><tr><th>Tipo</th><th>Quem/O quê</th><th>Data</th></tr></thead><tbody>${items.map(i=>`<tr><td>${i.tipo}</td><td>${i.nome}</td><td>${i.atraso?'<span class="tag overdue">Atrasado — '+fmtDate(i.data)+'</span>':fmtDate(i.data)}</td></tr>`).join('')}</tbody></table>`;
+  state.crm.leads.forEach(l=>{ if(l.proximoFollowUp){ const d=daysDiff(l.proximoFollowUp); if(d<=0) items.push({tipo:'Follow-up CRM', nome:l.nome, data:l.proximoFollowUp, atraso:d<0, link:()=>abrirFicha(l.id), concluir:()=>{ l.proximoFollowUp=''; save(); render(); }});} });
+  state.clientes.forEach(cl=>{ if(cl.proximoReminder){ const d=daysDiff(cl.proximoReminder); if(d<=0) items.push({tipo:'Cliente aguardando retorno ('+(cl.tipoReminder||'check-in')+')', nome:cl.nome, data:cl.proximoReminder, atraso:d<0, link:()=>abrirChecklist(cl.id), concluir:()=>{ cl.proximoReminder=''; save(); render(); }}); } });
+  state.gestao.tarefas.forEach(t=>{ if(t.status!=='Concluído' && t.prazo){ const d=daysDiff(t.prazo); if(d<=0) items.push({tipo:'Tarefa'+(t.prioridade==='Alta'?' prioritária':''), nome:t.titulo, data:t.prazo, atraso:d<0, link:()=>abrirFichaTarefa(t.id), concluir:()=>{ logMudancaStatus(t,'Status',t.status,'Concluído'); t.status='Concluído'; save(); render(); }}); } });
+  state.agenda.eventos.filter(e=>e.data===todayStr()).forEach(e=> items.push({tipo:'Agenda hoje', nome:e.titulo+(e.hora?' às '+e.hora:''), data:e.data, atraso:false}));
+  state.gestao.reunioes.filter(r=>r.data===todayStr()).forEach(r=> items.push({tipo:'Reunião hoje', nome:r.pauta.slice(0,50), data:r.data, atraso:false}));
+  /* Heurísticas extras — insights derivados, não dados brutos novos */
+  state.clientes.forEach(cl=>{
+    if(cl.status==='ativa'){
+      const dias = diasSemAtividade(cl.historico, cl.dataFechamento);
+      if(dias!==null && dias>=15) items.push({tipo:'Cliente sem movimentação há '+dias+' dias', nome:cl.nome, data:todayStr(), atraso:true, link:()=>abrirChecklist(cl.id)});
+    }
+    if(cl.status==='finalizada'){
+      const pediuDepoimento = (cl.historico||[]).some(h=>/depoimento/i.test(h.nota||''));
+      if(!pediuDepoimento) items.push({tipo:'Depoimento não pedido', nome:cl.nome, data:cl.dataFechamento||todayStr(), atraso:false, link:()=>abrirChecklist(cl.id)});
+    }
+  });
+  state.crm.leads.forEach(l=>{
+    if(l.estagio==='Proposta Enviada' && !l.proximoFollowUp){
+      const dias = diasSemAtividade(l.historico, l.dataCriacao);
+      if(dias!==null && dias>=7) items.push({tipo:'Proposta esfriando ('+dias+' dias sem follow-up)', nome:l.nome, data:todayStr(), atraso:true, link:()=>abrirFicha(l.id)});
+    }
+  });
+  return items.sort((a,b)=> (b.atraso===true) - (a.atraso===true));
+}
+function metaEmRisco(){
+  const mesAtual = todayStr().slice(0,7);
+  const metaMes = metaDoMes(mesAtual);
+  if(!metaMes) return null;
+  const rec = (receitaPorMes()[mesAtual])||0;
+  const [y,m] = mesAtual.split('-').map(Number);
+  const diasNoMes = new Date(y,m,0).getDate();
+  const diaAtual = Number(todayStr().slice(8,10));
+  const pctTempo = diaAtual/diasNoMes;
+  const pctMeta = rec/metaMes;
+  if(pctTempo > 0.35 && pctMeta < pctTempo - 0.15){
+    return `Meta em risco: já se passaram ${Math.round(pctTempo*100)}% do mês, mas você atingiu ${Math.round(pctMeta*100)}% da meta de ${fmtBRL(metaMes)}.`;
+  }
+  return null;
+}
+function renderAgendaHoje(){
+  atencaoHojeCache = getAtencaoHoje();
+  const items = atencaoHojeCache;
+  const risco = metaEmRisco();
+  const riscoHtml = risco ? `<div class="note" style="background:#f3dcd8;color:#8f3b31;margin-bottom:12px;">${risco}</div>` : '';
+  if(items.length===0) return riscoHtml + '<div class="empty-state">Nada pendente pra hoje.</div>';
+  return riscoHtml + `<table><thead><tr><th>Tipo</th><th>Quem/O quê</th><th>Data</th><th></th></tr></thead><tbody>${items.map((i,idx)=>`<tr ${i.link?`onclick="atencaoHojeCache[${idx}].link()" style="cursor:pointer;"`:''}><td>${escHtml(i.tipo)}</td><td>${escHtml(i.nome)}</td><td>${i.atraso?'<span class="tag overdue">Atrasado — '+fmtDate(i.data)+'</span>':fmtDate(i.data)}</td><td>${i.concluir?`<button class="btn ghost xs" onclick="event.stopPropagation(); concluirItemAtencao(${idx})">Concluir</button>`:''}</td></tr>`).join('')}</tbody></table>`;
 }
 
 /* ===================== METAS ===================== */
@@ -766,7 +994,7 @@ function renderMetas(){
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Produtos / Serviços</h3><button class="btn gold xs" onclick="addProduto()">+ Adicionar produto</button></div>
     <table><thead><tr><th>Produto</th><th>Preço</th><th>Descrição</th><th></th></tr></thead><tbody>
-    ${state.meta.produtos.map(p=>`<tr><td>${p.nome}</td><td>${fmtBRL(p.preco)}</td><td>${p.descricao||''}</td><td><button class="btn ghost xs" onclick="editProduto('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delProduto('${p.id}')">Excluir</button></td></tr>`).join('')}
+    ${state.meta.produtos.map(p=>`<tr><td>${escHtml(p.nome)}</td><td>${fmtBRL(p.preco)}</td><td>${escHtml(p.descricao)}</td><td><button class="btn ghost xs" onclick="editProduto('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delProduto('${p.id}')">Excluir</button></td></tr>`).join('')}
     </tbody></table>
   </div>`;
 }
@@ -791,7 +1019,7 @@ function editProduto(id){
   openModal('Editar produto', [{key:'nome',label:'Nome',type:'text',required:true},{key:'preco',label:'Preço (R$)',type:'number',required:true},{key:'descricao',label:'Descrição',type:'textarea'}], p);
   modalOnSave = (data)=>{ Object.assign(p,{nome:data.nome, preco:Number(data.preco), descricao:data.descricao}); save(); render(); };
 }
-function delProduto(id){ if(!confirm('Excluir este produto?')) return; state.meta.produtos = state.meta.produtos.filter(x=>x.id!==id); save(); render(); }
+function delProduto(id){ confirmarAcao('Excluir este produto?', ()=>{ state.meta.produtos = state.meta.produtos.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== CRM ===================== */
 let crmDisplayMode = 'tabela';
@@ -813,7 +1041,7 @@ function renderCRM(){
     const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
     let fuTag = '—';
     if(fu!==null){ fuTag = `<span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span>`; }
-    return `<tr><td>${l.nome}</td><td>${fmtDate(l.dataCriacao)}</td><td>${l.contato||''}</td><td><span class="tag ${stageColorClass(l.estagio)}">${l.estagio}</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
+    return `<tr><td>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
     <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.convertido? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
   }).join('');
   return `
@@ -827,43 +1055,71 @@ function renderCRM(){
       </div>
       <button class="btn gold xs" onclick="addLead()">+ Novo lead</button>
     </div>
-    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads) : (leads.length? `<table><thead><tr><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty-state">Nenhum lead cadastrado ainda. Clique em "Novo lead" para começar.</div>')}
+    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads, 'estagio', 'leads') : (leads.length? `<table><thead><tr><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty-state">Nenhum lead cadastrado ainda. Clique em "Novo lead" para começar.</div>')}
   </div>
   <div class="card" style="margin-top:16px;">
     <h3 class="section-title">Resumo por estágio</h3>
-    <div class="grid grid-4">${stages.map((s,i)=>`<div class="kpi"><div class="label">${s}</div><div class="value">${leads.filter(l=>l.estagio===s).length}</div></div>`).join('')}</div>
+    <div class="grid grid-4">${stages.map((s,i)=>`<div class="kpi"><div class="label">${escHtml(s)}</div><div class="value">${leads.filter(l=>l.estagio===s).length}</div></div>`).join('')}</div>
   </div>`;
 }
-function renderKanban(stages, leads){
-  if(!leads.length) return '<div class="empty-state">Nenhum lead cadastrado ainda. Clique em "Novo lead" para começar.</div>';
+/* Kanban genérico com drag-and-drop — reaproveitado pelo funil do CRM (por estágio) e pelas Tarefas (por status) */
+function renderKanban(colunas, itens, campoColuna, contexto){
+  if(!itens.length) return '<div class="empty-state">Nada cadastrado ainda.</div>';
+  /* No funil de leads, compacta as variações de "Perdido" numa faixa só — o motivo específico continua visível em cada cartão, só não ocupa uma coluna inteira cada um. */
+  let colDefs = colunas.map(c=>({label:c, valores:[c]}));
+  if(contexto==='leads'){
+    const perdidos = colunas.filter(c=>c.startsWith('Perdido'));
+    if(perdidos.length){
+      colDefs = colunas.filter(c=>!c.startsWith('Perdido')).map(c=>({label:c, valores:[c]}));
+      colDefs.push({label:'Perdido (todos os motivos)', valores:perdidos, compacta:true});
+    }
+  }
   return `<div class="kanban-board">
-    ${stages.map(s=>{
-      const cards = leads.filter(l=>l.estagio===s);
-      const stageEsc = s.replace(/'/g,"\\'");
-      return `<div class="kanban-col" ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'${stageEsc}')">
-        <div class="kanban-col-header"><span>${s}</span><span>${cards.length}</span></div>
-        ${cards.length ? cards.map(l=>{
-          const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
-          const fuTag = fu!==null ? `<div style="margin-top:6px;"><span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span></div>` : '';
-          return `<div class="kanban-card" draggable="true" ondragstart="onCardDragStart(event,'${l.id}')" onclick="abrirFicha('${l.id}')">
-            <div class="nome">${l.nome}</div>
-            <div class="small-muted">${fmtBRL(l.valorEstimado)}</div>
-            ${fuTag}
-          </div>`;
-        }).join('') : '<div class="small-muted" style="padding:6px 0;">Vazio</div>'}
+    ${colDefs.map(def=>{
+      const cards = itens.filter(it=>def.valores.includes(it[campoColuna]));
+      const dropValor = (def.compacta ? 'Perdido' : def.valores[0]).replace(/'/g,"\\'");
+      return `<div class="kanban-col" ondragover="onColDragOver(event)" ondragleave="onColDragLeave(event)" ondrop="onColDrop(event,'${dropValor}','${contexto}','${campoColuna}')">
+        <div class="kanban-col-header"><span>${escHtml(def.label)}</span><span>${cards.length}</span></div>
+        ${cards.length ? cards.map(it=>renderKanbanCard(it, contexto, def.compacta)).join('') : '<div class="small-muted" style="padding:6px 0;">Vazio</div>'}
       </div>`;
     }).join('')}
   </div>`;
 }
-function onCardDragStart(ev, leadId){ ev.dataTransfer.setData('text/plain', leadId); ev.dataTransfer.effectAllowed = 'move'; }
+function renderKanbanCard(it, contexto, mostrarMotivo){
+  if(contexto==='tarefas'){
+    const prazoTag = it.prazo ? `<div style="margin-top:6px;"><span class="tag ${daysDiff(it.prazo)<0?'overdue':(daysDiff(it.prazo)===0?'today':'upcoming')}">${fmtDate(it.prazo)}</span></div>` : '';
+    return `<div class="kanban-card" draggable="true" ondragstart="onCardDragStart(event,'${it.id}')" onclick="abrirFichaTarefa('${it.id}')">
+      <div class="nome">${escHtml(it.titulo)}</div>
+      <div class="small-muted">${escHtml(it.responsavel)}${it.prioridade? ' · '+escHtml(it.prioridade):''}</div>
+      ${prazoTag}
+    </div>`;
+  }
+  const fu = it.proximoFollowUp ? daysDiff(it.proximoFollowUp) : null;
+  const fuTag = fu!==null ? `<div style="margin-top:6px;"><span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(it.proximoFollowUp)}</span></div>` : '';
+  const motivoTag = mostrarMotivo ? `<div class="small-muted" style="margin-top:4px;font-style:italic;">${escHtml(it.estagio)}</div>` : '';
+  return `<div class="kanban-card" draggable="true" ondragstart="onCardDragStart(event,'${it.id}')" onclick="abrirFicha('${it.id}')">
+    <div class="nome">${escHtml(it.nome)}</div>
+    <div class="small-muted">${fmtBRL(it.valorEstimado)}</div>
+    ${motivoTag}
+    ${fuTag}
+  </div>`;
+}
+function onCardDragStart(ev, itemId){ ev.dataTransfer.setData('text/plain', itemId); ev.dataTransfer.effectAllowed = 'move'; }
 function onColDragOver(ev){ ev.preventDefault(); ev.currentTarget.style.background = '#e8ddc8'; }
 function onColDragLeave(ev){ ev.currentTarget.style.background = ''; }
-function onColDrop(ev, stageName){
+function onColDrop(ev, novoValor, contexto, campoColuna){
   ev.preventDefault();
   ev.currentTarget.style.background = '';
-  const leadId = ev.dataTransfer.getData('text/plain');
-  const lead = state.crm.leads.find(l=>l.id===leadId);
-  if(lead && lead.estagio !== stageName){ lead.estagio = stageName; save(); render(); }
+  const itemId = ev.dataTransfer.getData('text/plain');
+  const colecao = contexto==='tarefas' ? state.gestao.tarefas : state.crm.leads;
+  const item = colecao.find(x=>x.id===itemId);
+  if(item && item[campoColuna] !== novoValor){
+    const valorAntes = item[campoColuna];
+    item[campoColuna] = novoValor;
+    logMudancaStatus(item, campoColuna==='estagio'?'Estágio':'Status', valorAntes, novoValor);
+    save(); render();
+    if(contexto==='leads' && novoValor==='Fechado - Ganho' && valorAntes!=='Fechado - Ganho' && !item.convertido) converterCliente(item.id);
+  }
 }
 function leadFields(){
   return [
@@ -887,69 +1143,97 @@ function addLead(){
 }
 function editLead(id){
   const l = state.crm.leads.find(x=>x.id===id);
+  const estagioAntes = l.estagio;
   openModal('Editar lead', leadFields(), l);
-  modalOnSave = (data)=>{ Object.assign(l, data, {valorEstimado:Number(data.valorEstimado||0)}); save(); render(); };
+  modalOnSave = (data)=>{
+    Object.assign(l, data, {valorEstimado:Number(data.valorEstimado||0)});
+    logMudancaStatus(l, 'Estágio', estagioAntes, l.estagio);
+    save(); render();
+    if(l.estagio==='Fechado - Ganho' && estagioAntes!=='Fechado - Ganho' && !l.convertido) converterCliente(l.id);
+  };
 }
-function delLead(id){ if(!confirm('Excluir este lead?')) return; state.crm.leads = state.crm.leads.filter(x=>x.id!==id); save(); render(); }
+function delLead(id){ confirmarAcao('Excluir este lead?', ()=>{ state.crm.leads = state.crm.leads.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* Ficha do lead: perfil completo + histórico/timeline de interações */
 let crmView = 'funil';
 let crmFichaId = null;
-function abrirFicha(id){ crmFichaId = id; crmView = 'ficha'; render(); }
+function abrirFicha(id){ crmFichaId = id; crmView = 'ficha'; setTab('crm'); }
 function fecharFicha(){ crmView = 'funil'; crmFichaId = null; render(); }
-function historicoFields(){
+/* Histórico/timeline genérico — reaproveitado por leads, clientes e tarefas (mesmo shape, uma lógica só). Comentário interno é apenas tipo:'Comentário' dentro do mesmo array, não uma estrutura separada. */
+function historicoFields(tipoDefault){
   return [
     {key:'data', label:'Data', type:'date', required:true},
-    {key:'tipo', label:'Tipo', type:'select', options:['Mensagem','Ligação','Proposta enviada','Objeção','Pagamento','Reunião/Call','Outro']},
+    {key:'tipo', label:'Tipo', type:'select', options:['Mensagem','Comentário','Ligação','Proposta enviada','Objeção','Pagamento','Reunião/Call','Mudança de status','Outro'], default: tipoDefault},
     {key:'nota', label:'O que aconteceu', type:'textarea', required:true}
   ];
 }
-function addHistorico(leadId){
-  openModal('Registrar interação', historicoFields(), {data: todayStr()});
+function getColecao(colName){
+  if(colName==='leads') return state.crm.leads;
+  if(colName==='clientes') return state.clientes;
+  if(colName==='tarefas') return state.gestao.tarefas;
+}
+/* Timeline automática — registra sozinha no histórico (mesma estrutura já usada pelos comentários manuais) toda vez que um campo de status importante muda, sem precisar digitar nada. */
+function logMudancaStatus(item, campo, valorAntes, valorDepois){
+  if(valorAntes === valorDepois || !valorDepois) return;
+  if(!item.historico) item.historico = [];
+  item.historico.push({id:uid(), data:todayStr(), tipo:'Mudança de status', nota:campo+' alterado de "'+(valorAntes||'—')+'" para "'+valorDepois+'"', autor:getUsuarioAtual()||''});
+}
+function addHistoricoGenerico(colName, itemId, tipoDefault){
+  openModal(tipoDefault==='Comentário'?'Novo comentário interno':'Registrar interação', historicoFields(tipoDefault), {data: todayStr(), tipo: tipoDefault});
   modalOnSave = (data)=>{
-    const l = state.crm.leads.find(x=>x.id===leadId);
-    if(!l.historico) l.historico = [];
-    l.historico.push(Object.assign({id:uid()}, data));
+    const item = getColecao(colName).find(x=>x.id===itemId);
+    if(!item.historico) item.historico = [];
+    item.historico.push(Object.assign({id:uid(), autor:getUsuarioAtual()||''}, data));
     save(); render();
   };
 }
-function delHistorico(leadId, histId){
-  if(!confirm('Excluir esse registro do histórico?')) return;
-  const l = state.crm.leads.find(x=>x.id===leadId);
-  l.historico = (l.historico||[]).filter(h=>h.id!==histId);
+function delHistoricoGenerico(colName, itemId, histId){
+  confirmarAcao('Excluir esse registro?', ()=>{
+  const item = getColecao(colName).find(x=>x.id===itemId);
+  item.historico = (item.historico||[]).filter(h=>h.id!==histId);
   save(); render();
+  }, {perigo:true, textoConfirmar:'Excluir'});
 }
+function renderHistoricoBloco(colName, itemId, historicoArr){
+  const historico = (historicoArr||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));
+  return `
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Histórico / Comentários</h3>
+      <button class="btn ghost xs" onclick="addHistoricoGenerico('${colName}','${itemId}','Comentário')">+ Comentário interno</button>
+      <button class="btn gold xs" onclick="addHistoricoGenerico('${colName}','${itemId}')">+ Registrar interação</button>
+    </div>
+    ${historico.length? historico.map(h=>`<div class="script-card"><h4>${fmtDate(h.data)} — ${escHtml(h.tipo)}${h.autor?' · '+escHtml(h.autor):''}</h4><pre>${escHtml(h.nota)}</pre><button class="btn danger xs" onclick="delHistoricoGenerico('${colName}','${itemId}','${h.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nada registrado ainda. Mensagens, ligações, mudanças de status e comentários internos da equipe entram aqui.</div>'}
+  </div>`;
+}
+/* Compatibilidade com o nome usado antes (ficha do lead) */
+function addHistorico(leadId){ addHistoricoGenerico('leads', leadId); }
+function delHistorico(leadId, histId){ delHistoricoGenerico('leads', leadId, histId); }
 function renderFichaLead(l){
-  const historico = (l.historico||[]).slice().sort((a,b)=>b.data.localeCompare(a.data));
   return `
   <div class="toolbar"><button class="btn ghost xs" onclick="fecharFicha()">← Voltar ao funil</button></div>
   <div class="card">
-    <div class="toolbar"><h3 class="section-title" style="margin:0;">${l.nome}</h3><button class="btn ghost xs" onclick="editLead('${l.id}')">Editar dados</button></div>
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">${escHtml(l.nome)}</h3><button class="btn ghost xs" onclick="editLead('${l.id}')">Editar dados</button></div>
     <div class="grid grid-3">
-      <div><div class="small-muted" style="font-weight:600;">Estágio</div><span class="tag ${stageColorClass(l.estagio)}">${l.estagio}</span></div>
-      <div><div class="small-muted" style="font-weight:600;">Contato</div>${l.contato||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Origem</div>${l.origem||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Profissão</div>${l.profissao||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Cidade</div>${l.cidade||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Estilo de comunicação</div>${l.estiloComunicacao||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Estágio</div><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></div>
+      <div><div class="small-muted" style="font-weight:600;">Contato</div>${escHtml(l.contato)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Origem</div>${escHtml(l.origem)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Profissão</div>${escHtml(l.profissao)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Cidade</div>${escHtml(l.cidade)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Estilo de comunicação</div>${escHtml(l.estiloComunicacao)||'—'}</div>
       <div><div class="small-muted" style="font-weight:600;">Valor estimado</div>${fmtBRL(l.valorEstimado)}</div>
       <div><div class="small-muted" style="font-weight:600;">Data de entrada</div>${fmtDate(l.dataCriacao)}</div>
       <div><div class="small-muted" style="font-weight:600;">Próximo follow-up</div>${l.proximoFollowUp? fmtDate(l.proximoFollowUp):'—'}</div>
     </div>
     <div class="grid grid-2" style="margin-top:14px;">
-      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Dores</div><div style="font-size:13.5px;">${l.dores||'—'}</div></div>
-      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Objetivos</div><div style="font-size:13.5px;">${l.objetivos||'—'}</div></div>
+      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Dores</div><div style="font-size:13.5px;">${escHtml(l.dores)||'—'}</div></div>
+      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Objetivos</div><div style="font-size:13.5px;">${escHtml(l.objetivos)||'—'}</div></div>
     </div>
-    ${l.notas? `<div style="margin-top:14px;"><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Notas gerais</div><div style="font-size:13.5px;">${l.notas}</div></div>` : ''}
+    ${l.notas? `<div style="margin-top:14px;"><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Notas gerais</div><div style="font-size:13.5px;">${escHtml(l.notas)}</div></div>` : ''}
   </div>
-  <div class="card" style="margin-top:16px;">
-    <div class="toolbar"><h3 class="section-title" style="margin:0;">Histórico / Timeline</h3><button class="btn gold xs" onclick="addHistorico('${l.id}')">+ Registrar interação</button></div>
-    ${historico.length? historico.map(h=>`<div class="script-card"><h4>${fmtDate(h.data)} — ${h.tipo}</h4><pre>${h.nota}</pre><button class="btn danger xs" onclick="delHistorico('${l.id}','${h.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nenhuma interação registrada ainda. Cada mensagem, ligação, proposta ou objeção pode virar um registro aqui.</div>'}
-  </div>`;
+  ${renderHistoricoBloco('leads', l.id, l.historico)}`;
 }
 function converterCliente(id){
   const l = state.crm.leads.find(x=>x.id===id);
-  l.convertido = true;
   openModal('Converter em cliente', [
     {key:'nome', label:'Nome', type:'text', required:true},
     {key:'produto', label:'Produto contratado', type:'select', options: state.meta.produtos.map(p=>p.nome)},
@@ -957,8 +1241,17 @@ function converterCliente(id){
     {key:'dataFechamento', label:'Data de fechamento', type:'date'}
   ], {nome:l.nome, valor:l.valorEstimado, dataFechamento: todayStr()});
   modalOnSave = (data)=>{
-    state.clientes.push({id:uid(), leadId:l.id, nome:data.nome, produto:data.produto, valor:Number(data.valor||0), dataFechamento:data.dataFechamento, status:'ativa', proximoReminder:'', tipoReminder:'check-in', notas:'', checklist:checklistParaProduto(data.produto)});
-    save(); render();
+    l.convertido = true;
+    const novoCliente = {id:uid(), leadId:l.id, nome:data.nome, produto:data.produto, valor:Number(data.valor||0), dataFechamento:data.dataFechamento, status:'ativa', proximoReminder:addDays(data.dataFechamento,30), tipoReminder:'check-in', notas:'', checklist:checklistParaProduto(data.produto), historico:[{id:uid(), data:data.dataFechamento, tipo:'Mudança de status', nota:'Convertida a partir do lead "'+l.nome+'" — fechou o produto '+(data.produto||'')+'.', autor:getUsuarioAtual()||''}]};
+    state.clientes.push(novoCliente);
+    const responsavelPadrao = getUsuarioAtual() || (state.gestao.equipe[0]? state.gestao.equipe[0].nome : 'Eu');
+    tarefasIniciaisParaProduto(data.produto).forEach(titulo=>{
+      state.gestao.tarefas.push({id:uid(), titulo, responsavel:responsavelPadrao, clienteId:novoCliente.id, categoria:'Atendimento', prioridade:'Alta', status:'A fazer', prazo:addDays(data.dataFechamento,3), historico:[], checklist:[]});
+    });
+    save();
+    clientesView = 'checklist';
+    clientesChecklistId = novoCliente.id;
+    setTab('clientes');
   };
 }
 
@@ -980,8 +1273,8 @@ function renderClientes(){
     const checklist = c.checklist||[];
     const done = checklist.filter(i=>i.done).length;
     const progresso = checklist.length? `${done}/${checklist.length}` : '—';
-    return `<tr><td>${c.nome}</td><td>${c.produto||''}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${c.status}</span></td><td>${remTag}</td><td>${progresso}</td>
-    <td><button class="btn ghost xs" onclick="abrirChecklist('${c.id}')">Checklist</button> <button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCliente('${c.id}')">Excluir</button></td></tr>`;
+    return `<tr><td>${escHtml(c.nome)}</td><td>${escHtml(c.produto)}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${escHtml(c.status)}</span></td><td>${remTag}</td><td>${progresso}</td>
+    <td><button class="btn ghost xs" onclick="abrirChecklist('${c.id}')">Ficha</button> <button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCliente('${c.id}')">Excluir</button></td></tr>`;
   }).join('');
   return `
   <div class="subtabs">
@@ -1010,39 +1303,99 @@ function clienteFields(){
 }
 function addCliente(){
   openModal('Nova cliente', clienteFields(), {status:'ativa', dataFechamento: todayStr()});
-  modalOnSave = (data)=>{ state.clientes.push(Object.assign({id:uid(), checklist:checklistParaProduto(data.produto)}, data, {valor:Number(data.valor||0)})); save(); render(); };
+  modalOnSave = (data)=>{ state.clientes.push(Object.assign({id:uid(), checklist:checklistParaProduto(data.produto), historico:[]}, data, {valor:Number(data.valor||0)})); save(); render(); };
 }
 function editCliente(id){
   const c = state.clientes.find(x=>x.id===id);
+  const statusAntes = c.status;
   openModal('Editar cliente', clienteFields(), c);
-  modalOnSave = (data)=>{ Object.assign(c, data, {valor:Number(data.valor||0)}); save(); render(); };
+  modalOnSave = (data)=>{
+    Object.assign(c, data, {valor:Number(data.valor||0)});
+    logMudancaStatus(c, 'Status', statusAntes, c.status);
+    save(); render();
+  };
 }
-function delCliente(id){ if(!confirm('Excluir esta cliente?')) return; state.clientes = state.clientes.filter(x=>x.id!==id); save(); render(); }
+function delCliente(id){ confirmarAcao('Excluir esta cliente?', ()=>{ state.clientes = state.clientes.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* Checklist de execução do projeto contratado (etapas reais do Método ALMA®) */
-function abrirChecklist(id){ clientesChecklistId = id; clientesView = 'checklist'; render(); }
+function abrirChecklist(id){ clientesChecklistId = id; clientesView = 'checklist'; setTab('clientes'); }
 function fecharChecklist(){ clientesView = 'lista'; clientesChecklistId = null; render(); }
-function toggleChecklistItem(clienteId, idx){
-  const c = state.clientes.find(x=>x.id===clienteId);
-  if(!c.checklist) c.checklist = checklistParaProduto(c.produto);
-  c.checklist[idx].done = !c.checklist[idx].done;
+/* Checklist genérico — mesmo padrão do histórico, reaproveitado por clientes e tarefas */
+function toggleChecklistItem(colName, itemId, idx){
+  const item = getColecao(colName).find(x=>x.id===itemId);
+  if(!item.checklist) item.checklist = [];
+  item.checklist[idx].done = !item.checklist[idx].done;
   save(); render();
 }
-function renderChecklistCliente(c){
-  const checklist = c.checklist||[];
+function addChecklistItem(colName, itemId){
+  openModal('Adicionar etapa', [{key:'step', label:'Nome da etapa', type:'text', required:true}]);
+  modalOnSave = (data)=>{
+    const item = getColecao(colName).find(x=>x.id===itemId);
+    if(!item.checklist) item.checklist = [];
+    item.checklist.push({step:data.step, done:false});
+    save(); render();
+  };
+}
+function delChecklistItem(colName, itemId, idx){
+  confirmarAcao('Excluir esta etapa da checklist?', ()=>{
+  const item = getColecao(colName).find(x=>x.id===itemId);
+  item.checklist.splice(idx,1);
+  save(); render();
+  }, {perigo:true, textoConfirmar:'Excluir'});
+}
+function renderChecklistBloco(colName, itemId, checklist, titulo){
+  checklist = checklist||[];
   const done = checklist.filter(i=>i.done).length;
   const pct = checklist.length? Math.round(done/checklist.length*100) : 0;
-  return `
-  <div class="toolbar"><button class="btn ghost xs" onclick="fecharChecklist()">← Voltar pra lista de clientes</button></div>
-  <div class="card">
-    <h3 class="section-title">${c.nome} — ${c.produto||'Checklist de execução'}</h3>
+  return `<div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">${titulo||'Checklist'}</h3><button class="btn gold xs" onclick="addChecklistItem('${colName}','${itemId}')">+ Adicionar etapa</button></div>
     <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
     <div class="small-muted" style="margin-top:6px;">${done}/${checklist.length} etapas concluídas (${pct}%)</div>
     <div style="margin-top:16px;">
-    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item ${item.done?'done':''}"><input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${c.id}',${idx})"><span style="flex:1;">${item.step}</span></div>`).join('') : '<div class="empty-state">Sem etapas definidas — edite a cliente e selecione o produto contratado.</div>'}
+    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item ${item.done?'done':''}"><input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${colName}','${itemId}',${idx})"><span style="flex:1;">${escHtml(item.step)}</span><button class="btn ghost xs" onclick="delChecklistItem('${colName}','${itemId}',${idx})">Excluir</button></div>`).join('') : '<div class="empty-state">Sem etapas definidas ainda. Clique em "Adicionar etapa" para começar.</div>'}
     </div>
   </div>`;
 }
+function irParaFichaLead(leadId){ abrirFicha(leadId); }
+function renderChecklistCliente(c){
+  const leadOrigem = c.leadId ? state.crm.leads.find(l=>l.id===c.leadId) : null;
+  const tarefasRel = state.gestao.tarefas.filter(t=>t.clienteId===c.id);
+  const eventosRel = state.agenda.eventos.filter(e=>e.clienteId===c.id).sort((a,b)=>a.data.localeCompare(b.data));
+  const financeiroRel = [
+    ...state.financeiro.entradas.filter(e=>e.clienteId===c.id).map(e=>({...e, tipo:'entrada'})),
+    ...state.financeiro.saidas.filter(e=>e.clienteId===c.id).map(e=>({...e, tipo:'saída'}))
+  ].sort((a,b)=>b.data.localeCompare(a.data));
+  return `
+  <div class="toolbar"><button class="btn ghost xs" onclick="fecharChecklist()">← Voltar pra lista de clientes</button></div>
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">${escHtml(c.nome)}</h3><button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar dados</button></div>
+    <div class="grid grid-4">
+      <div><div class="small-muted" style="font-weight:600;">Produto</div>${escHtml(c.produto)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Valor</div>${fmtBRL(c.valor)}</div>
+      <div><div class="small-muted" style="font-weight:600;">Status</div><span class="tag status-${c.status}">${escHtml(c.status)}</span></div>
+      <div><div class="small-muted" style="font-weight:600;">Próx. reminder</div>${c.proximoReminder? fmtDate(c.proximoReminder)+' ('+escHtml(c.tipoReminder)+')':'—'}</div>
+    </div>
+    ${leadOrigem? `<div class="small-muted" style="margin-top:12px;">Veio do lead <a href="#" onclick="irParaFichaLead('${leadOrigem.id}');return false;" style="color:var(--gold);font-weight:600;">${escHtml(leadOrigem.nome)}</a> (origem: ${escHtml(leadOrigem.origem)||'—'})</div>` : ''}
+  </div>
+  ${renderChecklistBloco('clientes', c.id, c.checklist, 'Checklist de execução')}
+  <div class="grid grid-3" style="margin-top:16px;align-items:start;">
+    <div class="card">
+      <div class="toolbar"><h3 class="section-title" style="margin:0;">Tarefas</h3><button class="btn ghost xs" onclick="addTarefaParaCliente('${c.id}')">+</button></div>
+      ${tarefasRel.length? tarefasRel.map(t=>`<div class="checklist-item ${t.status==='Concluído'?'done':''}"><span style="flex:1;">${escHtml(t.titulo)}</span><button class="btn ghost xs" onclick="abrirFichaTarefa('${t.id}')">Ver</button></div>`).join('') : '<div class="empty-state">Nenhuma tarefa vinculada.</div>'}
+    </div>
+    <div class="card">
+      <div class="toolbar"><h3 class="section-title" style="margin:0;">Agenda</h3><button class="btn ghost xs" onclick="addEventoParaCliente('${c.id}')">+</button></div>
+      ${eventosRel.length? eventosRel.map(e=>`<div class="checklist-item"><span style="flex:1;">${fmtDate(e.data)} — ${escHtml(e.titulo)}</span></div>`).join('') : '<div class="empty-state">Nenhum compromisso vinculado.</div>'}
+    </div>
+    <div class="card">
+      <h3 class="section-title">Financeiro</h3>
+      ${financeiroRel.length? financeiroRel.map(f=>`<div class="checklist-item"><span style="flex:1;">${fmtDate(f.data)} — ${escHtml(f.categoria)||f.tipo}</span><b>${fmtBRL(f.valor)}</b></div>`).join('') : '<div class="empty-state">Nenhum lançamento extra vinculado (a venda em si já conta como receita).</div>'}
+    </div>
+  </div>
+  ${renderHistoricoBloco('clientes', c.id, c.historico)}`;
+}
+function addTarefaParaCliente(clienteId){ criarRegistro(state.gestao.tarefas, 'Nova tarefa', tarefaFields, {status:'A fazer', prioridade:'Média', clienteId}, {historico:[], checklist:[]}); }
+function addEventoParaCliente(clienteId){ criarRegistro(state.agenda.eventos, 'Novo evento', eventoFields, {data: todayStr(), clienteId}); }
 
 /* ===================== AGENDA ===================== */
 let agendaView = 'dia';
@@ -1066,7 +1419,7 @@ function setAgendaView(v){ agendaView=v; render(); }
 function renderAgendaDia(){
   const evs = state.agenda.eventos.filter(e=>e.data===agendaRefDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
   return `<input type="date" value="${agendaRefDate}" onchange="agendaRefDate=this.value; render();" style="margin-bottom:12px;padding:7px;border:1px solid var(--border);border-radius:6px;">
-  ${evs.length? `<table><thead><tr><th>Hora</th><th>Título</th><th>Tipo</th><th></th></tr></thead><tbody>${evs.map(e=>`<tr><td>${e.hora||'—'}</td><td>${e.titulo}</td><td>${e.tipo||''}</td><td><button class="btn ghost xs" onclick="editEvento('${e.id}')">Editar</button> <button class="btn danger xs" onclick="delEvento('${e.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nada agendado nesse dia.</div>'}`;
+  ${evs.length? `<table><thead><tr><th>Hora</th><th>Título</th><th>Tipo</th><th></th></tr></thead><tbody>${evs.map(e=>`<tr><td>${e.hora||'—'}</td><td>${escHtml(e.titulo)}</td><td>${escHtml(e.tipo)}</td><td><button class="btn ghost xs" onclick="editEvento('${e.id}')">Editar</button> <button class="btn danger xs" onclick="delEvento('${e.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nada agendado nesse dia.</div>'}`;
 }
 function renderAgendaSemana(){
   const base = new Date(agendaRefDate+'T00:00:00');
@@ -1110,11 +1463,11 @@ function renderAgendaAno(){
   return `<table><thead><tr><th>Mês</th><th>Eventos</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function eventoFields(){
-  return [{key:'titulo',label:'Título',type:'text',required:true},{key:'data',label:'Data',type:'date',required:true},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'select',options:['Atendimento','Diagnóstico','Conteúdo','Reunião estrategista','Pessoal','Outro']}];
+  return [{key:'titulo',label:'Título',type:'text',required:true},{key:'data',label:'Data',type:'date',required:true},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'select',options:['Atendimento','Diagnóstico','Conteúdo','Reunião estrategista','Pessoal','Outro']},{key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...state.clientes.map(c=>({value:c.id,label:c.nome}))]},{key:'local',label:'Local / link (Meet, endereço)',type:'text'},{key:'observacoes',label:'Observações',type:'textarea'}];
 }
-function addEvento(){ openModal('Novo evento', eventoFields(), {data: agendaRefDate}); modalOnSave=(data)=>{ state.agenda.eventos.push(Object.assign({id:uid()},data)); save(); render(); }; }
-function editEvento(id){ const e = state.agenda.eventos.find(x=>x.id===id); openModal('Editar evento', eventoFields(), e); modalOnSave=(data)=>{ Object.assign(e,data); save(); render(); }; }
-function delEvento(id){ if(!confirm('Excluir evento?')) return; state.agenda.eventos = state.agenda.eventos.filter(x=>x.id!==id); save(); render(); }
+function addEvento(){ criarRegistro(state.agenda.eventos, 'Novo evento', eventoFields, {data: agendaRefDate}); }
+function editEvento(id){ editarRegistro(state.agenda.eventos.find(x=>x.id===id), 'Editar evento', eventoFields); }
+function delEvento(id){ confirmarAcao('Excluir evento?', ()=>{ state.agenda.eventos = state.agenda.eventos.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== ROTINA ===================== */
 let rotinaSubtab = 'diaria';
@@ -1139,7 +1492,7 @@ function addRotinaItem(){
   openModal('Novo item de rotina', [{key:'texto', label:'Descrição', type:'text', required:true}]);
   modalOnSave = (data)=>{ state.rotina[rotinaSubtab].push(data.texto); save(); render(); };
 }
-function delRotinaItem(idx){ if(!confirm('Excluir item?')) return; state.rotina[rotinaSubtab].splice(idx,1); save(); render(); }
+function delRotinaItem(idx){ confirmarAcao('Excluir item?', ()=>{ state.rotina[rotinaSubtab].splice(idx,1); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== UPDATES DO DIA ===================== */
 function renderUpdates(){
@@ -1148,14 +1501,14 @@ function renderUpdates(){
   <div class="note phase2">Automação total (buscar sozinho na internet todos os dias) está planejada para a Fase 2, com rotina agendada + banco de dados na nuvem. Por enquanto, registre aqui manualmente (ou peça pro Claude pesquisar e preencher pra você) as pautas quentes, novidades de IA/automação, ideias de conteúdo e reports de mercado do dia.</div>
   <div class="card">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Updates registrados</h3><button class="btn gold xs" onclick="addUpdate()">+ Novo update</button></div>
-    ${entradas.length? entradas.map(u=>`<div class="script-card"><h4>${fmtDate(u.data)} — ${u.tag||'Geral'}</h4><pre>${u.conteudo}</pre><button class="btn danger xs" onclick="delUpdate('${u.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nenhum update registrado ainda.</div>'}
+    ${entradas.length? entradas.map(u=>`<div class="script-card"><h4>${fmtDate(u.data)} — ${escHtml(u.tag)||'Geral'}</h4><pre>${escHtml(u.conteudo)}</pre><button class="btn danger xs" onclick="delUpdate('${u.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nenhum update registrado ainda.</div>'}
   </div>`;
 }
 function addUpdate(){
   openModal('Novo update do dia', [{key:'data',label:'Data',type:'date',required:true},{key:'tag',label:'Categoria',type:'select',options:['Conteúdo/Pauta quente','IA/Automação','Ideia de melhoria','Report de mercado']},{key:'conteudo',label:'Conteúdo',type:'textarea',required:true}], {data:todayStr()});
   modalOnSave=(data)=>{ state.updates.entradas.push(Object.assign({id:uid()},data)); save(); render(); };
 }
-function delUpdate(id){ if(!confirm('Excluir update?')) return; state.updates.entradas = state.updates.entradas.filter(x=>x.id!==id); save(); render(); }
+function delUpdate(id){ confirmarAcao('Excluir update?', ()=>{ state.updates.entradas = state.updates.entradas.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== BASE DE CONHECIMENTO ===================== */
 function renderBase(){
@@ -1165,15 +1518,15 @@ function renderBase(){
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Base de dados do negócio e do método</h3><button class="btn gold xs" onclick="addArtigo()">+ Novo artigo</button></div>
     ${cats.map(cat=>`
       <div style="margin-bottom:18px;">
-        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">${cat}</div>
-        ${state.base.artigos.filter(a=>a.categoria===cat).map(a=>`<div class="script-card"><h4>${a.titulo}</h4><pre>${a.conteudo}</pre><button class="btn ghost xs" onclick="editArtigo('${a.id}')">Editar</button> <button class="btn danger xs" onclick="delArtigo('${a.id}')">Excluir</button></div>`).join('')}
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">${escHtml(cat)}</div>
+        ${state.base.artigos.filter(a=>a.categoria===cat).map(a=>`<div class="script-card"><h4>${escHtml(a.titulo)}</h4><pre>${escHtml(a.conteudo)}</pre><button class="btn ghost xs" onclick="editArtigo('${a.id}')">Editar</button> <button class="btn danger xs" onclick="delArtigo('${a.id}')">Excluir</button></div>`).join('')}
       </div>`).join('')}
   </div>`;
 }
 function artigoFields(){ return [{key:'categoria',label:'Categoria',type:'text',required:true},{key:'titulo',label:'Título',type:'text',required:true},{key:'conteudo',label:'Conteúdo',type:'textarea',required:true}]; }
-function addArtigo(){ openModal('Novo artigo', artigoFields(), {categoria:'Metodologia'}); modalOnSave=(data)=>{ state.base.artigos.push(Object.assign({id:uid()},data)); save(); render(); }; }
-function editArtigo(id){ const a = state.base.artigos.find(x=>x.id===id); openModal('Editar artigo', artigoFields(), a); modalOnSave=(data)=>{ Object.assign(a,data); save(); render(); }; }
-function delArtigo(id){ if(!confirm('Excluir artigo?')) return; state.base.artigos = state.base.artigos.filter(x=>x.id!==id); save(); render(); }
+function addArtigo(){ criarRegistro(state.base.artigos, 'Novo artigo', artigoFields, {categoria:'Metodologia'}); }
+function editArtigo(id){ editarRegistro(state.base.artigos.find(x=>x.id===id), 'Editar artigo', artigoFields); }
+function delArtigo(id){ confirmarAcao('Excluir artigo?', ()=>{ state.base.artigos = state.base.artigos.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== SCRIPTS ===================== */
 function renderScripts(){
@@ -1182,8 +1535,8 @@ function renderScripts(){
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Base de scripts</h3><button class="btn gold xs" onclick="addCategoriaScript()">+ Categoria</button></div>
     ${state.scripts.categorias.map((cat,ci)=>`
       <div style="margin-bottom:18px;">
-        <div class="toolbar" style="margin-bottom:8px;"><b style="text-transform:uppercase;font-size:12px;letter-spacing:.5px;color:var(--gold);">${cat.nome}</b><button class="btn ghost xs" onclick="addScriptItem(${ci})">+ Script</button></div>
-        ${cat.itens.map((it,ii)=>`<div class="script-card"><h4>${it.titulo}</h4><pre>${it.conteudo}</pre>
+        <div class="toolbar" style="margin-bottom:8px;"><b style="text-transform:uppercase;font-size:12px;letter-spacing:.5px;color:var(--gold);">${escHtml(cat.nome)}</b><button class="btn ghost xs" onclick="addScriptItem(${ci})">+ Script</button></div>
+        ${cat.itens.map((it,ii)=>`<div class="script-card"><h4>${escHtml(it.titulo)}</h4><pre>${escHtml(it.conteudo)}</pre>
           <button class="btn ghost xs" onclick="copiarScript(${ci},${ii})">Copiar</button>
           <button class="btn ghost xs" onclick="editScriptItem(${ci},${ii})">Editar</button>
           <button class="btn danger xs" onclick="delScriptItem(${ci},${ii})">Excluir</button></div>`).join('')}
@@ -1196,26 +1549,64 @@ function addCategoriaScript(){
 }
 function scriptFields(){ return [{key:'titulo',label:'Título',type:'text',required:true},{key:'conteudo',label:'Conteúdo do script',type:'textarea',required:true}]; }
 function addScriptItem(ci){ openModal('Novo script', scriptFields()); modalOnSave=(data)=>{ state.scripts.categorias[ci].itens.push(data); save(); render(); }; }
-function editScriptItem(ci,ii){ const it = state.scripts.categorias[ci].itens[ii]; openModal('Editar script', scriptFields(), it); modalOnSave=(data)=>{ Object.assign(it,data); save(); render(); }; }
-function delScriptItem(ci,ii){ if(!confirm('Excluir script?')) return; state.scripts.categorias[ci].itens.splice(ii,1); save(); render(); }
-function copiarScript(ci,ii){ const it = state.scripts.categorias[ci].itens[ii]; navigator.clipboard.writeText(it.conteudo).then(()=>alert('Script copiado!')); }
+function editScriptItem(ci,ii){ editarRegistro(state.scripts.categorias[ci].itens[ii], 'Editar script', scriptFields); }
+function delScriptItem(ci,ii){ confirmarAcao('Excluir script?', ()=>{ state.scripts.categorias[ci].itens.splice(ii,1); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+function copiarScript(ci,ii){ const it = state.scripts.categorias[ci].itens[ii]; navigator.clipboard.writeText(it.conteudo).then(()=>mostrarToast('Script copiado!')); }
 
 /* ===================== FINANCEIRO ===================== */
 let financeiroSubtab = 'fluxo';
+let financeiroFiltroAno = 'todos';
+let financeiroFiltroMes = 'todos';
+const MESES_LABEL = [['01','Janeiro'],['02','Fevereiro'],['03','Março'],['04','Abril'],['05','Maio'],['06','Junho'],['07','Julho'],['08','Agosto'],['09','Setembro'],['10','Outubro'],['11','Novembro'],['12','Dezembro']];
+function anosDisponiveisFinanceiro(){
+  const anos = new Set([todayStr().slice(0,4)]);
+  state.financeiro.entradas.forEach(e=>{ if(e.data) anos.add(e.data.slice(0,4)); });
+  state.financeiro.saidas.forEach(e=>{ if(e.data) anos.add(e.data.slice(0,4)); });
+  state.clientes.forEach(c=>{ if(c.dataFechamento) anos.add(c.dataFechamento.slice(0,4)); });
+  return Array.from(anos).sort();
+}
+function dataNoFiltroFinanceiro(dataStr){
+  if(!dataStr) return false;
+  if(financeiroFiltroAno==='todos') return true;
+  if(dataStr.slice(0,4) !== financeiroFiltroAno) return false;
+  if(financeiroFiltroMes==='todos') return true;
+  return dataStr.slice(5,7) === financeiroFiltroMes;
+}
+function setFiltroFinanceiro(tipo, valor){
+  if(tipo==='ano'){ financeiroFiltroAno = valor; financeiroFiltroMes = 'todos'; }
+  else { financeiroFiltroMes = valor; }
+  render();
+}
 function renderFinanceiro(){
-  const entradas = state.financeiro.entradas.reduce((a,e)=>a+Number(e.valor||0),0) + state.clientes.reduce((a,c)=>a+Number(c.valor||0),0);
-  const saidas = state.financeiro.saidas.reduce((a,e)=>a+Number(e.valor||0),0);
+  const entradasF = state.financeiro.entradas.filter(e=>dataNoFiltroFinanceiro(e.data));
+  const saidasF = state.financeiro.saidas.filter(e=>dataNoFiltroFinanceiro(e.data));
+  const clientesF = state.clientes.filter(c=>dataNoFiltroFinanceiro(c.dataFechamento));
+  const entradas = entradasF.reduce((a,e)=>a+Number(e.valor||0),0) + clientesF.reduce((a,c)=>a+Number(c.valor||0),0);
+  const saidas = saidasF.reduce((a,e)=>a+Number(e.valor||0),0);
   const lucro = entradas - saidas;
   const margem = entradas? Math.round(lucro/entradas*100):0;
   const subtabs = [['fluxo','Fluxo de Caixa'],['dre','DRE Simples'],['categorias','Categorias']];
   let body='';
   if(financeiroSubtab==='fluxo') body = renderFluxoCaixa();
-  if(financeiroSubtab==='dre') body = renderDRE(entradas, saidas, lucro, margem);
+  if(financeiroSubtab==='dre') body = renderDRE(entradas, saidas, lucro, margem, saidasF);
   if(financeiroSubtab==='categorias') body = renderCategoriasFin();
+  const anos = anosDisponiveisFinanceiro();
+  const filtroUI = `<div class="toolbar" style="margin-bottom:14px;">
+    <span class="small-muted" style="font-weight:600;">Período:</span>
+    <select onchange="setFiltroFinanceiro('ano', this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;">
+      <option value="todos" ${financeiroFiltroAno==='todos'?'selected':''}>Todos os anos</option>
+      ${anos.map(a=>`<option value="${a}" ${financeiroFiltroAno===a?'selected':''}>${a}</option>`).join('')}
+    </select>
+    <select onchange="setFiltroFinanceiro('mes', this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;" ${financeiroFiltroAno==='todos'?'disabled':''}>
+      <option value="todos" ${financeiroFiltroMes==='todos'?'selected':''}>Todos os meses</option>
+      ${MESES_LABEL.map(([v,l])=>`<option value="${v}" ${financeiroFiltroMes===v?'selected':''}>${l}</option>`).join('')}
+    </select>
+  </div>`;
   return `
+  ${filtroUI}
   <div class="grid grid-4">
-    <div class="card kpi"><div class="label">Receita total (vendas + entradas)</div><div class="value">${fmtBRL(entradas)}</div></div>
-    <div class="card kpi"><div class="label">Despesas totais</div><div class="value">${fmtBRL(saidas)}</div></div>
+    <div class="card kpi"><div class="label">Receita no período</div><div class="value">${fmtBRL(entradas)}</div></div>
+    <div class="card kpi"><div class="label">Despesas no período</div><div class="value">${fmtBRL(saidas)}</div></div>
     <div class="card kpi"><div class="label">Lucro líquido</div><div class="value">${fmtBRL(lucro)}</div></div>
     <div class="card kpi"><div class="label">Margem líquida</div><div class="value">${margem}%</div></div>
   </div>
@@ -1228,53 +1619,122 @@ function renderFluxoCaixa(){
     ...state.financeiro.entradas.map(e=>({...e, tipo:'entrada'})),
     ...state.financeiro.saidas.map(e=>({...e, tipo:'saída'})),
     ...state.clientes.map(c=>({id:c.id, data:c.dataFechamento, valor:c.valor, categoria:'Venda: '+(c.produto||''), tipo:'entrada', origemCliente:true}))
-  ].filter(m=>m.data).sort((a,b)=>b.data.localeCompare(a.data));
+  ].filter(m=>m.data && dataNoFiltroFinanceiro(m.data)).sort((a,b)=>b.data.localeCompare(a.data));
   return `<div class="toolbar"><button class="btn gold xs" onclick="addMovimento('entrada')">+ Entrada</button><button class="btn ghost xs" onclick="addMovimento('saida')">+ Saída</button></div>
-  ${mov.length? `<table><thead><tr><th>Data</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${mov.map(m=>`<tr><td>${fmtDate(m.data)}</td><td>${m.categoria||''}</td><td>${m.tipo}</td><td>${fmtBRL(m.valor)}</td><td>${m.origemCliente?'<span class="small-muted">via Clientes</span>':`<button class="btn danger xs" onclick="delMovimento('${m.tipo==='entrada'?'entradas':'saidas'}','${m.id}')">Excluir</button>`}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhum lançamento manual ainda (vendas de clientes aparecem aqui automaticamente).</div>'}`;
+  ${mov.length? `<table><thead><tr><th>Data</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${mov.map(m=>`<tr><td>${fmtDate(m.data)}</td><td>${escHtml(m.categoria)}</td><td>${m.tipo}</td><td>${fmtBRL(m.valor)}</td><td>${m.origemCliente?'<span class="small-muted">via Clientes</span>':`<button class="btn danger xs" onclick="delMovimento('${m.tipo==='entrada'?'entradas':'saidas'}','${m.id}')">Excluir</button>`}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhum lançamento nesse período.</div>'}`;
 }
 function addMovimento(tipo){
-  const cats = tipo==='entrada' ? ['Venda avulsa','Outro'] : [...state.financeiro.categoriasFixas, ...state.financeiro.categoriasVariaveis];
-  openModal('Novo lançamento — '+tipo, [{key:'data',label:'Data',type:'date',required:true},{key:'categoria',label:'Categoria',type:'select',options:cats},{key:'valor',label:'Valor (R$)',type:'number',required:true}], {data:todayStr()});
+  const cats = tipo==='entrada' ? ['Venda avulsa','Outro'] : [...state.financeiro.categoriasFixas, ...state.financeiro.categoriasVariaveis].map(c=>c.nome);
+  openModal('Novo lançamento — '+tipo, [{key:'data',label:'Data',type:'date',required:true},{key:'categoria',label:'Categoria',type:'select',options:cats},{key:'valor',label:'Valor (R$)',type:'number',required:true},{key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...state.clientes.map(c=>({value:c.id,label:c.nome}))]}], {data:todayStr()});
   modalOnSave=(data)=>{ const arr = tipo==='entrada'? state.financeiro.entradas : state.financeiro.saidas; arr.push(Object.assign({id:uid()},data,{valor:Number(data.valor)})); save(); render(); };
 }
-function delMovimento(arrName,id){ if(!confirm('Excluir lançamento?')) return; state.financeiro[arrName] = state.financeiro[arrName].filter(x=>x.id!==id); save(); render(); }
-function renderDRE(entradas,saidas,lucro,margem){
+function delMovimento(arrName,id){ confirmarAcao('Excluir lançamento?', ()=>{ state.financeiro[arrName] = state.financeiro[arrName].filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+function renderDRE(entradas,saidas,lucro,margem,saidasF){
+  const nomesFixas = state.financeiro.categoriasFixas.map(c=>c.nome);
+  const nomesVariaveis = state.financeiro.categoriasVariaveis.map(c=>c.nome);
   return `<table><tbody>
   <tr><td>Receita Bruta</td><td style="text-align:right;">${fmtBRL(entradas)}</td></tr>
-  <tr><td>(-) Despesas Fixas</td><td style="text-align:right;">${fmtBRL(state.financeiro.saidas.filter(s=>state.financeiro.categoriasFixas.includes(s.categoria)).reduce((a,s)=>a+Number(s.valor||0),0))}</td></tr>
-  <tr><td>(-) Despesas Variáveis</td><td style="text-align:right;">${fmtBRL(state.financeiro.saidas.filter(s=>state.financeiro.categoriasVariaveis.includes(s.categoria)).reduce((a,s)=>a+Number(s.valor||0),0))}</td></tr>
+  <tr><td>(-) Despesas Fixas</td><td style="text-align:right;">${fmtBRL(saidasF.filter(s=>nomesFixas.includes(s.categoria)).reduce((a,s)=>a+Number(s.valor||0),0))}</td></tr>
+  <tr><td>(-) Despesas Variáveis</td><td style="text-align:right;">${fmtBRL(saidasF.filter(s=>nomesVariaveis.includes(s.categoria)).reduce((a,s)=>a+Number(s.valor||0),0))}</td></tr>
   <tr style="font-weight:700;"><td>Lucro Líquido</td><td style="text-align:right;">${fmtBRL(lucro)}</td></tr>
   <tr><td>Margem Líquida</td><td style="text-align:right;">${margem}%</td></tr>
   </tbody></table>`;
 }
 function renderCategoriasFin(){
-  return `<div class="grid grid-2">
-  <div><h3 class="section-title">Despesas Fixas</h3>${state.financeiro.categoriasFixas.map((c,i)=>`<div class="checklist-item"><span style="flex:1;">${c}</span><button class="btn ghost xs" onclick="delCategoriaFin('categoriasFixas',${i})">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasFixas')">+ Categoria fixa</button></div>
-  <div><h3 class="section-title">Despesas Variáveis</h3>${state.financeiro.categoriasVariaveis.map((c,i)=>`<div class="checklist-item"><span style="flex:1;">${c}</span><button class="btn ghost xs" onclick="delCategoriaFin('categoriasVariaveis',${i})">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasVariaveis')">+ Categoria variável</button></div>
+  return `<div class="note">Defina aqui os itens de despesa da sua empresa com um valor de referência (útil pro planejamento). Os lançamentos reais de cada mês continuam na aba "Fluxo de Caixa".</div>
+  <div class="grid grid-2">
+  <div><h3 class="section-title">Despesas Fixas</h3>${state.financeiro.categoriasFixas.map(c=>`<div class="checklist-item"><span style="flex:1;">${escHtml(c.nome)}</span><b style="margin-right:10px;">${fmtBRL(c.valor)}</b><button class="btn ghost xs" onclick="editCategoriaFin('categoriasFixas','${c.id}')">Editar</button> <button class="btn ghost xs" onclick="delCategoriaFin('categoriasFixas','${c.id}')">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasFixas')">+ Categoria fixa</button></div>
+  <div><h3 class="section-title">Despesas Variáveis</h3>${state.financeiro.categoriasVariaveis.map(c=>`<div class="checklist-item"><span style="flex:1;">${escHtml(c.nome)}</span><b style="margin-right:10px;">${fmtBRL(c.valor)}</b><button class="btn ghost xs" onclick="editCategoriaFin('categoriasVariaveis','${c.id}')">Editar</button> <button class="btn ghost xs" onclick="delCategoriaFin('categoriasVariaveis','${c.id}')">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasVariaveis')">+ Categoria variável</button></div>
   </div>`;
 }
-function addCategoriaFin(arrName){ openModal('Nova categoria', [{key:'nome',label:'Nome',type:'text',required:true}]); modalOnSave=(data)=>{ state.financeiro[arrName].push(data.nome); save(); render(); }; }
-function delCategoriaFin(arrName, idx){ if(!confirm('Excluir categoria?')) return; state.financeiro[arrName].splice(idx,1); save(); render(); }
+function categoriaFinFields(){ return [{key:'nome',label:'Nome',type:'text',required:true},{key:'valor',label:'Valor de referência (R$)',type:'number'}]; }
+function addCategoriaFin(arrName){
+  openModal('Nova categoria', categoriaFinFields());
+  modalOnSave=(data)=>{ state.financeiro[arrName].push({id:uid(), nome:data.nome, valor:Number(data.valor||0)}); save(); render(); };
+}
+function editCategoriaFin(arrName, id){
+  const c = state.financeiro[arrName].find(x=>x.id===id);
+  openModal('Editar categoria', categoriaFinFields(), c);
+  modalOnSave=(data)=>{ Object.assign(c, {nome:data.nome, valor:Number(data.valor||0)}); save(); render(); };
+}
+function delCategoriaFin(arrName, id){ confirmarAcao('Excluir categoria?', ()=>{ state.financeiro[arrName] = state.financeiro[arrName].filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== GESTÃO ===================== */
+let gestaoView = 'lista';
+let gestaoFichaTarefaId = null;
+let gestaoDisplayMode = 'tabela';
+function setGestaoDisplayMode(m){ gestaoDisplayMode = m; render(); }
+function abrirFichaTarefa(id){ gestaoFichaTarefaId = id; gestaoView = 'ficha'; setTab('gestao'); }
+function fecharFichaTarefa(){ gestaoView = 'lista'; gestaoFichaTarefaId = null; render(); }
 function renderGestao(){
+  if(gestaoView==='ficha' && gestaoFichaTarefaId){
+    const t = state.gestao.tarefas.find(x=>x.id===gestaoFichaTarefaId);
+    if(t) return renderFichaTarefa(t);
+    gestaoView='lista'; gestaoFichaTarefaId=null;
+  }
   const tarefas = state.gestao.tarefas;
+  const nomeCliente = id => { const c = state.clientes.find(x=>x.id===id); return c? c.nome : '—'; };
+  const statusColunas = ['A fazer','Em andamento','Concluído'];
   return `
   <div class="card">
-    <div class="toolbar"><h3 class="section-title" style="margin:0;">Tarefas & delegação</h3><button class="btn gold xs" onclick="addTarefa()">+ Tarefa</button></div>
-    ${tarefas.length? `<table><thead><tr><th>Tarefa</th><th>Responsável</th><th>Status</th><th>Prazo</th><th></th></tr></thead><tbody>${tarefas.map(t=>`<tr><td>${t.titulo}</td><td>${t.responsavel}</td><td><span class="tag ${t.status==='Concluído'?'status-finalizada':'status-ativa'}">${t.status}</span></td><td>${fmtDate(t.prazo)}</td><td><button class="btn ghost xs" onclick="editTarefa('${t.id}')">Editar</button> <button class="btn danger xs" onclick="delTarefa('${t.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">Nenhuma tarefa registrada.</div>'}
+    <div class="toolbar">
+      <h3 class="section-title" style="margin:0;">Tarefas & delegação</h3>
+      <div class="subtabs" style="margin:0;">
+        <div class="subtab ${gestaoDisplayMode==='tabela'?'active':''}" onclick="setGestaoDisplayMode('tabela')">Tabela</div>
+        <div class="subtab ${gestaoDisplayMode==='kanban'?'active':''}" onclick="setGestaoDisplayMode('kanban')">Kanban</div>
+      </div>
+      <button class="btn gold xs" onclick="addTarefa()">+ Tarefa</button>
+    </div>
+    ${gestaoDisplayMode==='kanban' ? renderKanban(statusColunas, tarefas, 'status', 'tarefas') : (tarefas.length? `<table><thead><tr><th>Tarefa</th><th>Responsável</th><th>Cliente</th><th>Prioridade</th><th>Status</th><th>Prazo</th><th></th></tr></thead><tbody>${tarefas.map(t=>`<tr><td>${escHtml(t.titulo)}</td><td>${escHtml(t.responsavel)}</td><td>${t.clienteId? escHtml(nomeCliente(t.clienteId)):'—'}</td><td>${escHtml(t.prioridade)||'—'}</td><td><span class="tag ${t.status==='Concluído'?'status-finalizada':'status-ativa'}">${escHtml(t.status)}</span></td><td>${fmtDate(t.prazo)}</td><td><button class="btn ghost xs" onclick="abrirFichaTarefa('${t.id}')">Ficha</button> <button class="btn ghost xs" onclick="editTarefa('${t.id}')">Editar</button> <button class="btn danger xs" onclick="delTarefa('${t.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">Nenhuma tarefa registrada.</div>')}
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Reuniões com a estrategista</h3><button class="btn gold xs" onclick="addReuniao()">+ Reunião</button></div>
-    ${state.gestao.reunioes.length? state.gestao.reunioes.map(r=>`<div class="script-card"><h4>${fmtDate(r.data)}</h4><pre>${r.pauta}</pre><button class="btn danger xs" onclick="delReuniao('${r.id}')">Excluir</button></div>`).join(''):'<div class="empty-state">Nenhuma reunião registrada.</div>'}
+    ${state.gestao.reunioes.length? state.gestao.reunioes.map(r=>`<div class="script-card"><h4>${fmtDate(r.data)}</h4><pre>${escHtml(r.pauta)}</pre><button class="btn danger xs" onclick="delReuniao('${r.id}')">Excluir</button></div>`).join(''):'<div class="empty-state">Nenhuma reunião registrada.</div>'}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Equipe</h3><button class="btn gold xs" onclick="addEquipe()">+ Pessoa</button></div>
+    <div class="note">Cadastre aqui você e sua equipe (estrategista, secretária, social seller, assistente). Isso alimenta o seletor "Quem é você?" no topo da tela e a lista de responsáveis das tarefas — sem precisar de login.</div>
+    ${state.gestao.equipe.length? state.gestao.equipe.map(e=>`<div class="checklist-item"><span style="flex:1;">${escHtml(e.nome)}</span><span class="small-muted" style="margin-right:10px;">${escHtml(e.perfil)}</span><button class="btn ghost xs" onclick="editEquipe('${e.id}')">Editar</button> <button class="btn ghost xs" onclick="delEquipe('${e.id}')">Excluir</button></div>`).join(''):'<div class="empty-state">Ninguém cadastrado ainda.</div>'}
   </div>`;
 }
-function tarefaFields(){ return [{key:'titulo',label:'Tarefa',type:'text',required:true},{key:'responsavel',label:'Responsável',type:'select',options:['Eu','Estrategista','Equipe de execução']},{key:'status',label:'Status',type:'select',options:['A fazer','Em andamento','Concluído']},{key:'prazo',label:'Prazo',type:'date'}]; }
-function addTarefa(){ openModal('Nova tarefa', tarefaFields(), {status:'A fazer'}); modalOnSave=(data)=>{ state.gestao.tarefas.push(Object.assign({id:uid()},data)); save(); render(); }; }
-function editTarefa(id){ const t = state.gestao.tarefas.find(x=>x.id===id); openModal('Editar tarefa', tarefaFields(), t); modalOnSave=(data)=>{ Object.assign(t,data); save(); render(); }; }
-function delTarefa(id){ if(!confirm('Excluir tarefa?')) return; state.gestao.tarefas = state.gestao.tarefas.filter(x=>x.id!==id); save(); render(); }
-function addReuniao(){ openModal('Nova reunião', [{key:'data',label:'Data',type:'date',required:true},{key:'pauta',label:'Pauta / decisões',type:'textarea',required:true}], {data:todayStr()}); modalOnSave=(data)=>{ state.gestao.reunioes.push(Object.assign({id:uid()},data)); save(); render(); }; }
-function delReuniao(id){ if(!confirm('Excluir reunião?')) return; state.gestao.reunioes = state.gestao.reunioes.filter(x=>x.id!==id); save(); render(); }
+function renderFichaTarefa(t){
+  const cliente = t.clienteId ? state.clientes.find(c=>c.id===t.clienteId) : null;
+  return `
+  <div class="toolbar"><button class="btn ghost xs" onclick="fecharFichaTarefa()">← Voltar pra tarefas</button></div>
+  <div class="card">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">${escHtml(t.titulo)}</h3><button class="btn ghost xs" onclick="editTarefa('${t.id}')">Editar dados</button></div>
+    <div class="grid grid-4">
+      <div><div class="small-muted" style="font-weight:600;">Responsável</div>${escHtml(t.responsavel)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Prioridade</div>${escHtml(t.prioridade)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Categoria</div>${escHtml(t.categoria)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Status</div><span class="tag ${t.status==='Concluído'?'status-finalizada':'status-ativa'}">${escHtml(t.status)}</span></div>
+      <div><div class="small-muted" style="font-weight:600;">Prazo</div>${t.prazo? fmtDate(t.prazo):'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Cliente relacionado</div>${cliente? `<a href="#" onclick="clientesView='checklist'; clientesChecklistId='${cliente.id}'; setTab('clientes'); return false;" style="color:var(--gold);font-weight:600;">${escHtml(cliente.nome)}</a>` : '—'}</div>
+    </div>
+  </div>
+  ${renderChecklistBloco('tarefas', t.id, t.checklist, 'Checklist da tarefa')}
+  ${renderHistoricoBloco('tarefas', t.id, t.historico)}`;
+}
+function tarefaFields(){
+  return [
+    {key:'titulo',label:'Tarefa',type:'text',required:true},
+    {key:'responsavel',label:'Responsável',type:'select',options: state.gestao.equipe.length? state.gestao.equipe.map(e=>e.nome) : ['Eu']},
+    {key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...state.clientes.map(c=>({value:c.id,label:c.nome}))]},
+    {key:'categoria',label:'Categoria',type:'select',options:['Atendimento','Conteúdo','Financeiro','Comercial/CRM','Administrativo','Outro']},
+    {key:'prioridade',label:'Prioridade',type:'select',options:['Alta','Média','Baixa']},
+    {key:'status',label:'Status',type:'select',options:['A fazer','Em andamento','Concluído']},
+    {key:'prazo',label:'Prazo',type:'date'}
+  ];
+}
+function addTarefa(){ criarRegistro(state.gestao.tarefas, 'Nova tarefa', tarefaFields, {status:'A fazer', prioridade:'Média'}, {historico:[], checklist:[]}); }
+function editTarefa(id){ editarRegistro(state.gestao.tarefas.find(x=>x.id===id), 'Editar tarefa', tarefaFields, 'status'); }
+function delTarefa(id){ confirmarAcao('Excluir tarefa?', ()=>{ state.gestao.tarefas = state.gestao.tarefas.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+function addReuniao(){ criarRegistro(state.gestao.reunioes, 'Nova reunião', ()=>[{key:'data',label:'Data',type:'date',required:true},{key:'pauta',label:'Pauta / decisões',type:'textarea',required:true}], {data:todayStr()}); }
+function delReuniao(id){ confirmarAcao('Excluir reunião?', ()=>{ state.gestao.reunioes = state.gestao.reunioes.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+function equipeFields(){ return [{key:'nome',label:'Nome',type:'text',required:true},{key:'perfil',label:'Perfil',type:'select',options:['Administrador','Estrategista','Secretária','Social Seller','Assistente']}]; }
+function addEquipe(){ openModal('Nova pessoa na equipe', equipeFields(), {perfil:'Assistente'}); modalOnSave=(data)=>{ state.gestao.equipe.push(Object.assign({id:uid()},data)); save(); render(); renderUsuarioAtualBadge(); }; }
+function editEquipe(id){ const e = state.gestao.equipe.find(x=>x.id===id); openModal('Editar pessoa', equipeFields(), e); modalOnSave=(data)=>{ Object.assign(e,data); save(); render(); renderUsuarioAtualBadge(); }; }
+function delEquipe(id){ confirmarAcao('Remover esta pessoa da equipe?', ()=>{ state.gestao.equipe = state.gestao.equipe.filter(x=>x.id!==id); save(); render(); renderUsuarioAtualBadge(); }, {perigo:true, textoConfirmar:'Remover'}); }
 
 /* ===================== TRÁFEGO ===================== */
 function renderTrafego(){
@@ -1285,14 +1745,14 @@ function renderTrafego(){
     ${camps.length? `<table><thead><tr><th>Plataforma</th><th>Campanha</th><th>Investimento</th><th>Leads</th><th>CPL</th><th>Vendas geradas</th><th>CAC</th><th></th></tr></thead><tbody>${camps.map(c=>{
       const cpl = c.leads>0? Number(c.investimento)/Number(c.leads):0;
       const cac = c.vendas>0? Number(c.investimento)/Number(c.vendas):0;
-      return `<tr><td>${c.plataforma}</td><td>${c.nome}</td><td>${fmtBRL(c.investimento)}</td><td>${c.leads}</td><td>${fmtBRL(cpl)}</td><td>${c.vendas}</td><td>${fmtBRL(cac)}</td><td><button class="btn ghost xs" onclick="editCampanha('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCampanha('${c.id}')">Excluir</button></td></tr>`;
+      return `<tr><td>${escHtml(c.plataforma)}</td><td>${escHtml(c.nome)}</td><td>${fmtBRL(c.investimento)}</td><td>${c.leads}</td><td>${fmtBRL(cpl)}</td><td>${c.vendas}</td><td>${fmtBRL(cac)}</td><td><button class="btn ghost xs" onclick="editCampanha('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCampanha('${c.id}')">Excluir</button></td></tr>`;
     }).join('')}</tbody></table>` : '<div class="empty-state">Nenhuma campanha cadastrada ainda — sem orçamento definido no momento, estrutura pronta para quando começar.</div>'}
   </div>`;
 }
 function campanhaFields(){ return [{key:'plataforma',label:'Plataforma',type:'select',options:['Meta Ads','Google Ads','TikTok Ads']},{key:'nome',label:'Nome da campanha',type:'text',required:true},{key:'investimento',label:'Investimento (R$)',type:'number'},{key:'leads',label:'Leads gerados',type:'number'},{key:'vendas',label:'Vendas geradas',type:'number'},{key:'observacoes',label:'Observações',type:'textarea'}]; }
 function addCampanha(){ openModal('Nova campanha', campanhaFields()); modalOnSave=(data)=>{ state.trafego.campanhas.push(Object.assign({id:uid()},data,{investimento:Number(data.investimento||0), leads:Number(data.leads||0), vendas:Number(data.vendas||0)})); save(); render(); }; }
 function editCampanha(id){ const c = state.trafego.campanhas.find(x=>x.id===id); openModal('Editar campanha', campanhaFields(), c); modalOnSave=(data)=>{ Object.assign(c,data,{investimento:Number(data.investimento||0), leads:Number(data.leads||0), vendas:Number(data.vendas||0)}); save(); render(); }; }
-function delCampanha(id){ if(!confirm('Excluir campanha?')) return; state.trafego.campanhas = state.trafego.campanhas.filter(x=>x.id!==id); save(); render(); }
+function delCampanha(id){ confirmarAcao('Excluir campanha?', ()=>{ state.trafego.campanhas = state.trafego.campanhas.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== MÉTRICAS DE CONTEÚDO ===================== */
 function renderConteudo(){
@@ -1316,9 +1776,9 @@ function postFields(){ return [
   {key:'cliques',label:'Cliques no link',type:'number'},
   {key:'aprendizado',label:'Aprendizado/nota',type:'textarea'}
 ]; }
-function addPost(){ openModal('Novo post', postFields(), {data:todayStr()}); modalOnSave=(data)=>{ state.conteudo.posts.push(Object.assign({id:uid()},data)); save(); render(); }; }
-function editPost(id){ const p = state.conteudo.posts.find(x=>x.id===id); openModal('Editar post', postFields(), p); modalOnSave=(data)=>{ Object.assign(p,data); save(); render(); }; }
-function delPost(id){ if(!confirm('Excluir post?')) return; state.conteudo.posts = state.conteudo.posts.filter(x=>x.id!==id); save(); render(); }
+function addPost(){ criarRegistro(state.conteudo.posts, 'Novo post', postFields, {data:todayStr()}); }
+function editPost(id){ editarRegistro(state.conteudo.posts.find(x=>x.id===id), 'Editar post', postFields); }
+function delPost(id){ confirmarAcao('Excluir post?', ()=>{ state.conteudo.posts = state.conteudo.posts.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
 /* ===================== NUVEM (FASE 2) ===================== */
 function renderNuvem(){
@@ -1373,16 +1833,17 @@ service cloud.firestore {
 function handleConectarCloud(){
   const workspaceId = document.getElementById('cloudWorkspaceId').value.trim();
   const raw = document.getElementById('cloudConfigInput').value.trim();
-  if(!workspaceId || !raw){ alert('Preencha o Workspace ID e a configuração do Firebase.'); return; }
+  if(!workspaceId || !raw){ mostrarToast('Preencha o Workspace ID e a configuração do Firebase.', 'erro'); return; }
   let firebaseConfig;
-  try{ firebaseConfig = parseFirebaseConfigInput(raw); }catch(e){ alert('Não consegui entender a configuração colada. Confira se copiou o objeto inteiro, do jeito que aparece no Firebase (incluindo as chaves { }).'); return; }
-  if(!firebaseConfig || !firebaseConfig.apiKey){ alert('A configuração parece incompleta — confira se inclui apiKey, authDomain, projectId etc.'); return; }
+  try{ firebaseConfig = parseFirebaseConfigInput(raw); }catch(e){ mostrarToast('Não consegui entender a configuração colada. Confira se copiou o objeto inteiro, do jeito que aparece no Firebase (incluindo as chaves { }).', 'erro'); return; }
+  if(!firebaseConfig || !firebaseConfig.apiKey){ mostrarToast('A configuração parece incompleta — confira se inclui apiKey, authDomain, projectId etc.', 'erro'); return; }
   connectCloud({workspaceId, firebaseConfig}, true);
   render();
 }
 function handleDesconectarCloud(){
-  if(!confirm('Desconectar da nuvem? Os dados locais continuam salvos neste navegador.')) return;
-  clearCloudConfig(); render();
+  confirmarAcao('Desconectar da nuvem? Os dados locais continuam salvos neste navegador.', ()=>{
+    clearCloudConfig(); render();
+  }, {perigo:true, textoConfirmar:'Desconectar'});
 }
 
 /* ===================== BACKUP & CONFIG ===================== */
@@ -1422,21 +1883,23 @@ function importarBackup(ev){
       const parsed = JSON.parse(e.target.result);
       state = migrateState(parsed);
       save(); render();
-      alert('Backup importado com sucesso!');
-    }catch(err){ alert('Arquivo inválido.'); }
+      mostrarToast('Backup importado com sucesso!');
+    }catch(err){ mostrarToast('Arquivo inválido.', 'erro'); }
   };
   reader.readAsText(file);
 }
 function apagarTudo(){
-  if(!confirm('Tem certeza? Isso apaga TODOS os dados salvos neste navegador. Exporte um backup antes se não tiver certeza.')) return;
-  localStorage.removeItem(STORAGE_KEY);
-  state = defaultState(); save(); render();
+  confirmarAcao('Tem certeza? Isso apaga TODOS os dados salvos neste navegador. Exporte um backup antes se não tiver certeza.', ()=>{
+    localStorage.removeItem(STORAGE_KEY);
+    state = defaultState(); save(); render();
+  }, {perigo:true, textoConfirmar:'Apagar tudo'});
 }
 
 /* ===================== INIT ===================== */
 renderNav();
 render();
 updateCloudBadge();
+renderUsuarioAtualBadge();
 initCloudIfConfigured();
 </script>
 </body>
