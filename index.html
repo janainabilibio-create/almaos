@@ -73,8 +73,41 @@
   .kpi .value{font-size:26px;font-weight:700;color:var(--black);}
   .kpi .sub{font-size:12px;color:var(--gold);margin-top:4px;font-weight:600;}
 
+  /* Card de destaque (hero) — reservado pro número mais importante da tela, mesmo princípio visual do card escuro que se destaca das métricas ao redor */
+  .card.kpi.hero{background:var(--black);border-color:var(--black);}
+  .card.kpi.hero .label{color:var(--gold-light);}
+  .card.kpi.hero .value{color:var(--white);}
+  .card.kpi.hero .sub{color:var(--gold-light);}
+  .card.kpi.hero .progress-wrap{background:rgba(255,255,255,0.14);}
+
   .progress-wrap{background:var(--nude);border-radius:8px;height:10px;overflow:hidden;margin-top:8px;}
   .progress-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));border-radius:8px;transition:width .3s;}
+
+  /* Funil visual — nós conectados, mesma ideia de "leitura de funil num olhar só" */
+  .funil-visual{display:flex;align-items:flex-start;gap:2px;margin-top:14px;overflow-x:auto;padding:6px 0 4px;}
+  .funil-no{display:flex;flex-direction:column;align-items:center;gap:7px;flex-shrink:0;width:88px;}
+  .funil-circulo{width:58px;height:58px;border-radius:50%;background:var(--black);color:var(--gold-light);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;border:2px solid var(--gold);}
+  .funil-label{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;text-align:center;line-height:1.3;}
+  .funil-conexao{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;padding-top:21px;min-width:34px;margin-top:8px;}
+  .funil-conexao .linha{width:100%;height:2px;background:var(--border);}
+  .funil-conexao .taxa{font-size:10.5px;color:var(--gold);font-weight:700;margin-bottom:4px;white-space:nowrap;}
+
+  .insight-item{padding:10px 4px;border-bottom:1px solid var(--border);font-size:13.5px;line-height:1.55;}
+  .insight-item:last-child{border-bottom:none;}
+  .insight-item b{color:var(--gold);}
+
+  /* Calculadora Comercial — funil reverso: da meta até quantas conversas/propostas/vendas por dia */
+  .calc-comercial{border-radius:10px;overflow:hidden;margin-top:14px;}
+  .fc-row{display:flex;align-items:center;gap:14px;padding:13px 18px;color:var(--cream);}
+  .fc-row.mensal{background:var(--black);}
+  .fc-row.diaria{background:var(--charcoal-2);}
+  .fc-row + .fc-row{border-top:1px solid rgba(255,255,255,0.08);}
+  .fc-icon{font-size:17px;width:20px;text-align:center;flex-shrink:0;}
+  .fc-numero{font-size:21px;font-weight:700;color:var(--gold-light);min-width:52px;flex-shrink:0;}
+  .fc-texto{flex:1;}
+  .fc-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+  .fc-sub{font-size:11px;color:#cfc9bd;margin-top:2px;}
+  .fc-divisor{padding:7px 18px;background:var(--nude);color:var(--text-muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center;}
 
   h3.section-title{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:0 0 12px;font-weight:700;}
 
@@ -112,7 +145,10 @@
   .tag.status-ativa{background:#fff1d6;color:#8a6a1f;}
   .tag.status-finalizada{background:#dcead9;color:#3f6b3d;}
 
-  .empty-state{padding:30px 10px;text-align:center;color:var(--text-muted);font-size:13.5px;}
+  .empty-state{padding:38px 10px;text-align:center;color:var(--text-muted);font-size:13.5px;}
+  .empty-state .empty-icon{display:block;font-size:16px;color:var(--gold-light);opacity:.7;margin-bottom:10px;}
+  .empty-state .empty-text{max-width:340px;margin:0 auto;line-height:1.55;}
+  .empty-state .btn{margin-top:16px;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(22,20,18,0.55);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
   .modal-overlay.open{display:flex;}
@@ -154,6 +190,9 @@
   .kanban-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12.5px;cursor:grab;}
   .kanban-card:active{cursor:grabbing;}
   .kanban-card .nome{font-weight:700;margin-bottom:4px;}
+  .kanban-card-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .kanban-avatar{width:26px;height:26px;border-radius:50%;background:var(--gold);color:var(--black);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+  .kanban-card .ultima-nota{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:5px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 
   .notif-wrap, .search-wrap{position:relative;}
   .notif-btn{position:relative;background:transparent;border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text-dark);cursor:pointer;}
@@ -224,6 +263,10 @@ const todayStr = () => new Date().toISOString().slice(0,10);
 const monthStr = d => d.slice(0,7);
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const escHtml = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const emptyState = (texto, botaoHtml) => `<div class="empty-state"><span class="empty-icon">◆</span><div class="empty-text">${texto}</div>${botaoHtml||''}</div>`;
+/* Pilar 1 — Pessoa única: Lead e Cliente não são cadastros separados, são papéis da mesma pessoa (state.pessoas). Leads/Clientes viram apenas visões filtradas, nunca listas próprias. */
+const getLeads = () => state.pessoas.filter(p=>p.papeis && p.papeis.includes('lead'));
+const getClientes = () => state.pessoas.filter(p=>p.papeis && p.papeis.includes('cliente'));
 function stageColorClass(estagio){
   if(!estagio) return 'stage-new';
   if(estagio.startsWith('Perdido')) return 'stage-lost';
@@ -288,6 +331,8 @@ function ALMA_ARTIGOS_V1(){
 const CHECKLIST_MAPA_ALMA = ['Imersão (formulário + exercícios de estilo)','Primeiro Encontro (diagnóstico + coloração, se contratada)','Construção do Projeto de Imagem','Devolutiva','Suporte via WhatsApp (3 meses)'];
 const CHECKLIST_PROJETO_ALMA = ['Atendimento Inicial (imersão completa)','Confirmação de Estilo (se necessário)','Apresentação do Projeto e Plano de Ação','Triagem e Mapeamento do Closet','Montagem da Shopping List','Personal Shopping','Montagem de Looks','Suporte via WhatsApp (3 meses)'];
 const CHECKLIST_BEAUTY = ['Mapeamento Facial','Aula de Automake','Visagismo Simulado'];
+/* Pilar 21 — Especialização no Método ALMA®: caminho real de upgrade entre os produtos, usado pra sugerir o próximo passo certo no momento certo. */
+const UPGRADE_METODO_ALMA = {'Mapa Alma':'Projeto Alma', 'Mapa Alma + Visagismo':'Projeto Alma + Visagismo'};
 function checklistParaProduto(nomeProduto){
   let etapas;
   if(!nomeProduto) etapas = ['Atendimento inicial','Execução','Entrega final'];
@@ -307,6 +352,8 @@ function tarefasIniciaisParaProduto(nomeProduto){
 function defaultState(){
   return {
     contentV1Applied: true,
+    pessoaUnicaApplied: true,
+    pessoas: [],
     meta: {
       schedule: defaultScheduleMeta(),
       ticketMedio: 4625,
@@ -318,10 +365,8 @@ function defaultState(){
       ]
     },
     crm: {
-      stages: ['Novo Lead','Contato Iniciado','Diagnóstico Agendado','Diagnóstico Realizado','Proposta Enviada','Em Negociação','Aguardando Decisão','Fechado - Ganho','Sem Retorno','Momento Inadequado','Perdido','Perdido - Indisponibilidade de Investimento','Perdido - Fechou com Outro Profissional','Perdido - Desistiu do Projeto'],
-      leads: []
+      stages: ['Novo Lead','Contato Iniciado','Diagnóstico Agendado','Diagnóstico Realizado','Proposta Enviada','Em Negociação','Aguardando Decisão','Fechado - Ganho','Sem Retorno','Momento Inadequado','Perdido','Perdido - Indisponibilidade de Investimento','Perdido - Fechou com Outro Profissional','Perdido - Desistiu do Projeto']
     },
-    clientes: [],
     base: {
       artigos: ALMA_ARTIGOS_V1()
     },
@@ -403,6 +448,37 @@ function loadState(){
   }catch(e){ console.error('Falha ao carregar estado', e); }
   return defaultState();
 }
+/* Migração única (Pilar 1): funde os antigos state.crm.leads + state.clientes numa única state.pessoas, com papéis. Quem já era lead E virou cliente mantém o MESMO id e um histórico só — nunca dois registros da mesma pessoa. Roda uma vez só (guardado por pessoaUnicaApplied) e nunca perde dado: tudo que existia nos dois bancos antigos é preservado dentro da pessoa unificada. */
+function migrarParaPessoaUnica(merged){
+  const leadsAntigos = (merged.crm && merged.crm.leads) || [];
+  const clientesAntigos = merged.clientes || [];
+  const porId = {};
+  const pessoas = [];
+  leadsAntigos.forEach(l=>{
+    const p = Object.assign({}, l, {papeis:['lead'], historico: (l.historico||[]).slice()});
+    delete p.convertido;
+    porId[l.id] = p;
+    pessoas.push(p);
+  });
+  clientesAntigos.forEach(c=>{
+    const leadVinculado = c.leadId && porId[c.leadId];
+    if(leadVinculado){
+      const notasFinais = (c.notas && c.notas.trim()) ? c.notas : leadVinculado.notas;
+      const historicoCombinado = (leadVinculado.historico||[]).concat(c.historico||[]);
+      Object.assign(leadVinculado, c, {id: leadVinculado.id, notas: notasFinais, historico: historicoCombinado});
+      delete leadVinculado.leadId;
+      if(!leadVinculado.papeis.includes('cliente')) leadVinculado.papeis.push('cliente');
+    } else {
+      const p = Object.assign({}, c, {papeis:['cliente'], historico: (c.historico||[]).slice()});
+      delete p.leadId;
+      porId[c.id] = p;
+      pessoas.push(p);
+    }
+  });
+  merged.pessoas = pessoas;
+  if(merged.crm) delete merged.crm.leads;
+  delete merged.clientes;
+}
 function migrateState(s){
   const d = defaultState();
   // garante que módulos novos existam mesmo em backups antigos
@@ -421,8 +497,14 @@ function migrateState(s){
   });
   if(!s.contentV1Applied) applyContentV1(merged);
   d.crm.stages.forEach(st=>{ if(!merged.crm.stages.includes(st)) merged.crm.stages.push(st); });
-  merged.crm.leads.forEach(l=>{ if(!l.historico) l.historico = []; });
-  merged.clientes.forEach(c=>{ if(!c.checklist) c.checklist = checklistParaProduto(c.produto); if(!c.historico) c.historico = []; });
+  if(!s.pessoaUnicaApplied) migrarParaPessoaUnica(merged);
+  merged.pessoas.forEach(p=>{
+    if(!p.papeis) p.papeis = [];
+    if(!p.historico) p.historico = [];
+    if(p.papeis.includes('cliente') && !p.checklist) p.checklist = checklistParaProduto(p.produto);
+    if(p.papeis.includes('cliente') && p.valorRecebido===undefined) p.valorRecebido = Number(p.valor||0);
+  });
+  merged.pessoaUnicaApplied = true;
   merged.gestao.tarefas.forEach(t=>{ if(!t.historico) t.historico = []; if(!t.checklist) t.checklist = []; if(!t.status) t.status = 'A fazer'; });
   if(!merged.gestao.equipe || !merged.gestao.equipe.length) merged.gestao.equipe = [{id:uid(), nome:'Janaína Bilibio', perfil:'Administrador'}];
   ['categoriasFixas','categoriasVariaveis'].forEach(arrName=>{
@@ -461,7 +543,24 @@ function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); pushT
 /* Identidade local de quem está usando o navegador agora — não sincroniza com a nuvem, só assina histórico/comentários. Base para perfis futuros (Administrador, Estrategista, Secretária, Social Seller, Assistente) sem precisar de login. */
 const USUARIO_ATUAL_KEY = 'alma_os_usuario_atual';
 function getUsuarioAtual(){ return localStorage.getItem(USUARIO_ATUAL_KEY) || ''; }
-function setUsuarioAtual(nome){ localStorage.setItem(USUARIO_ATUAL_KEY, nome); renderUsuarioAtualBadge(); }
+/* RBAC de fachada: organiza a experiência por perfil, mas não é segurança de verdade — qualquer um com o arquivo ainda pode fazer tudo por fora da interface. Vira segurança real só se/quando ativarmos Firebase Authentication. Sem ninguém selecionado em "Quem é você?", libera tudo (não tranca por padrão). */
+function perfilAtual(){
+  const nome = getUsuarioAtual();
+  if(!nome) return null;
+  const pessoa = state.gestao.equipe.find(e=>e.nome===nome);
+  return pessoa ? pessoa.perfil : null;
+}
+function podeVerAreaRestrita(){
+  const perfil = perfilAtual();
+  return !perfil || perfil==='Administrador';
+}
+function setUsuarioAtual(nome){
+  localStorage.setItem(USUARIO_ATUAL_KEY, nome);
+  renderUsuarioAtualBadge();
+  const tabAtual = TABS.find(t=>t.id===activeTab);
+  if(tabAtual && tabAtual.restrito && !podeVerAreaRestrita()) setTab('dashboard');
+  else renderNav();
+}
 function renderUsuarioAtualBadge(){
   const el = document.getElementById('usuario-atual-select'); if(!el) return;
   const atual = getUsuarioAtual();
@@ -479,7 +578,7 @@ function updateNotifBadge(){
 function renderNotifPanelContent(){
   const panel = document.getElementById('notif-panel');
   atencaoHojeCache = getAtencaoHoje();
-  panel.innerHTML = atencaoHojeCache.length ? atencaoHojeCache.map((i,idx)=>`<div class="notif-item" onclick="clicarNotif(${idx})"><div class="tipo">${escHtml(i.tipo)}${i.atraso?' · atrasado':''}</div><div>${escHtml(i.nome)}</div><div class="small-muted">${fmtDate(i.data)}</div>${i.concluir?`<button class="btn ghost xs" style="margin-top:6px;" onclick="event.stopPropagation(); concluirItemAtencao(${idx}); renderNotifPanelContent();">Concluir</button>`:''}</div>`).join('') : '<div class="empty-state">Nada pendente agora.</div>';
+  panel.innerHTML = atencaoHojeCache.length ? atencaoHojeCache.map((i,idx)=>`<div class="notif-item" onclick="clicarNotif(${idx})"><div class="tipo">${escHtml(i.tipo)}${i.atraso?' · atrasado':''}</div><div>${escHtml(i.nome)}</div><div class="small-muted">${fmtDate(i.data)}</div>${i.concluir?`<button class="btn ghost xs" style="margin-top:6px;" onclick="event.stopPropagation(); concluirItemAtencao(${idx}); renderNotifPanelContent();">Concluir</button>`:''}</div>`).join('') : emptyState('Nada pendente agora.');
 }
 function toggleNotifPanel(){
   const panel = document.getElementById('notif-panel');
@@ -499,13 +598,38 @@ function concluirItemAtencao(idx){
 
 /* Busca global — varre CRM, Clientes, Tarefas, Agenda, Base de Conhecimento, Scripts e Financeiro. Reaproveita as mesmas fichas (abrirFicha/abrirChecklist/abrirFichaTarefa) já usadas em todo o resto do sistema. */
 let buscaGlobalCache = [];
+/* Pilar 19 — "Abertos recentemente": foco na busca sem digitar nada mostra os últimos itens vistos, em vez de ficar vazio. Só nesta sessão (não precisa persistir). */
+let recentesAbertos = [];
+function registrarRecente(tipo, id, nome, link){
+  recentesAbertos = recentesAbertos.filter(r=>!(r.tipo===tipo && r.id===id));
+  recentesAbertos.unshift({tipo, id, nome, link});
+  recentesAbertos = recentesAbertos.slice(0,6);
+}
+/* Pilar 18 — Command Palette com ações executáveis: Cmd/Ctrl+K não serve só pra buscar, também executa. Reaproveita o mesmo painel e a mesma lista de resultados da busca global — comando "casa" se o texto digitado bater com um dos gatilhos. */
+const COMANDOS_RAPIDOS = [
+  {gatilhos:['novo lead','nova lead','criar lead','+ lead'], titulo:'+ Novo lead', sub:'Comando rápido · CRM', run:()=>{ setTab('crm'); addLead(); }},
+  {gatilhos:['nova cliente','novo cliente','criar cliente','+ cliente'], titulo:'+ Nova cliente', sub:'Comando rápido · Clientes', run:()=>{ setTab('clientes'); addCliente(); }},
+  {gatilhos:['nova tarefa','criar tarefa','+ tarefa'], titulo:'+ Nova tarefa', sub:'Comando rápido · Gestão', run:()=>{ setTab('gestao'); addTarefa(); }},
+  {gatilhos:['novo evento','criar evento','agendar','+ evento'], titulo:'+ Novo evento', sub:'Comando rápido · Agenda', run:()=>{ setTab('agenda'); addEvento(); }},
+  {gatilhos:['novo lançamento','lancamento financeiro','+ lançamento'], titulo:'+ Novo lançamento financeiro', sub:'Comando rápido · Financeiro', run:()=>{ setTab('financeiro'); addMovimento('entrada'); }},
+  {gatilhos:['novo update','criar update','+ update'], titulo:'+ Novo update', sub:'Comando rápido · Updates', run:()=>{ setTab('updates'); addUpdate(); }}
+];
 function buscaGlobal(query){
   const q = String(query||'').trim().toLowerCase();
   if(!q) return [];
   const bate = (...vals) => vals.some(v => v!==undefined && v!==null && String(v).toLowerCase().indexOf(q)>=0);
   const results = [];
-  state.crm.leads.forEach(l=>{ if(bate(l.nome, l.contato, l.dores, l.objetivos, l.notas, l.profissao, l.cidade)) results.push({tipo:'Lead (CRM)', titulo:l.nome, sub:l.estagio, link:()=>abrirFicha(l.id)}); });
-  state.clientes.forEach(c=>{ if(bate(c.nome, c.notas, c.produto)) results.push({tipo:'Cliente', titulo:c.nome, sub:c.produto||c.status, link:()=>abrirChecklist(c.id)}); });
+  COMANDOS_RAPIDOS.forEach(cmd=>{ if(cmd.gatilhos.some(g=>g.indexOf(q)>=0 || q.indexOf(g)>=0)) results.push({tipo:'Ação', titulo:cmd.titulo, sub:cmd.sub, link:cmd.run}); });
+  /* Pessoa única (Pilar 1): uma linha de resultado por pessoa, mesmo quando ela é lead E cliente — nunca duas entradas apontando pra mesma ficha. */
+  state.pessoas.forEach(p=>{
+    if(bate(p.nome, p.contato, p.dores, p.objetivos, p.notas, p.profissao, p.cidade, p.produto)){
+      const ehLead = p.papeis && p.papeis.includes('lead');
+      const ehCliente = p.papeis && p.papeis.includes('cliente');
+      const tipo = (ehLead && ehCliente) ? 'Lead + Cliente' : ehCliente ? 'Cliente' : 'Lead (CRM)';
+      const sub = ehCliente ? (p.produto||p.status) : p.estagio;
+      results.push({tipo, titulo:p.nome, sub, link: ehCliente? ()=>abrirChecklist(p.id) : ()=>abrirFicha(p.id)});
+    }
+  });
   state.gestao.tarefas.forEach(t=>{ if(bate(t.titulo, t.categoria, t.responsavel)) results.push({tipo:'Tarefa', titulo:t.titulo, sub:t.status, link:()=>abrirFichaTarefa(t.id)}); });
   state.agenda.eventos.forEach(e=>{ if(bate(e.titulo, e.observacoes, e.local)) results.push({tipo:'Agenda', titulo:e.titulo, sub:fmtDate(e.data), link:()=>{ agendaRefDate=e.data; agendaView='dia'; setTab('agenda'); }}); });
   state.base.artigos.forEach(a=>{ if(bate(a.titulo, a.conteudo)) results.push({tipo:'Base de Conhecimento', titulo:a.titulo, sub:a.categoria, link:()=>setTab('base')}); });
@@ -515,9 +639,15 @@ function buscaGlobal(query){
 }
 function onBuscaGlobalInput(query){
   const panel = document.getElementById('busca-global-panel');
+  if(!query || !query.trim()){
+    if(!recentesAbertos.length){ panel.classList.remove('open'); return; }
+    buscaGlobalCache = recentesAbertos.map(r=>({tipo:'Recente · '+r.tipo, titulo:r.nome, sub:'', link:r.link}));
+    panel.innerHTML = buscaGlobalCache.map((r,idx)=>`<div class="dropdown-item" onclick="clicarBusca(${idx})"><div class="tipo">${escHtml(r.tipo)}</div><div>${escHtml(r.titulo)}</div></div>`).join('');
+    panel.classList.add('open');
+    return;
+  }
   buscaGlobalCache = buscaGlobal(query);
-  if(!query || !query.trim()){ panel.classList.remove('open'); return; }
-  panel.innerHTML = buscaGlobalCache.length ? buscaGlobalCache.map((r,idx)=>`<div class="dropdown-item" onclick="clicarBusca(${idx})"><div class="tipo">${escHtml(r.tipo)}</div><div>${escHtml(r.titulo)}</div><div class="small-muted">${escHtml(r.sub)}</div></div>`).join('') : '<div class="empty-state">Nada encontrado.</div>';
+  panel.innerHTML = buscaGlobalCache.length ? buscaGlobalCache.map((r,idx)=>`<div class="dropdown-item" onclick="clicarBusca(${idx})"><div class="tipo">${escHtml(r.tipo)}</div><div>${escHtml(r.titulo)}</div><div class="small-muted">${escHtml(r.sub)}</div></div>`).join('') : emptyState('Nada encontrado.');
   panel.classList.add('open');
 }
 function clicarBusca(idx){
@@ -634,23 +764,28 @@ const TABS = [
   {id:'trafego', label:'Tráfego Pago', grupo:'Conteúdo & Marketing'},
   {id:'conteudo', label:'Métricas de Conteúdo', grupo:'Conteúdo & Marketing'},
   {id:'financeiro', label:'Financeiro', grupo:'Financeiro'},
-  {id:'nuvem', label:'Nuvem (Fase 2)', grupo:'Sistema'},
-  {id:'config', label:'Backup & Config', grupo:'Sistema'}
+  {id:'nuvem', label:'Nuvem (Fase 2)', grupo:'Sistema', restrito:true},
+  {id:'config', label:'Backup & Config', grupo:'Sistema', restrito:true}
 ];
 let activeTab = 'dashboard';
 let crmSubtab = null;
 
 function renderNav(){
   const nav = document.getElementById('nav');
+  const podeRestrito = podeVerAreaRestrita();
   let html = '';
   let ultimoGrupo = null;
-  TABS.forEach(t=>{
+  TABS.filter(t=>!t.restrito || podeRestrito).forEach(t=>{
     if(t.grupo !== ultimoGrupo){ html += `<div class="nav-section-label">${t.grupo}</div>`; ultimoGrupo = t.grupo; }
     html += `<div class="nav-item ${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</div>`;
   });
   nav.innerHTML = html;
 }
-function setTab(id){ activeTab = id; document.getElementById('page-title').textContent = TABS.find(t=>t.id===id).label; renderNav(); render(); }
+function setTab(id){
+  const alvo = TABS.find(t=>t.id===id);
+  if(alvo && alvo.restrito && !podeVerAreaRestrita()) id = 'dashboard';
+  activeTab = id; document.getElementById('page-title').textContent = TABS.find(t=>t.id===id).label; renderNav(); render();
+}
 
 /* ===================== MODAL GENÉRICO ===================== */
 let modalOnSave = null;
@@ -736,10 +871,21 @@ function render(){
 /* ===================== CÁLCULOS COMPARTILHADOS ===================== */
 function receitaPorMes(){
   const map = {};
-  state.clientes.forEach(cl=>{
+  getClientes().forEach(cl=>{
     if(!cl.dataFechamento) return;
     const m = monthStr(cl.dataFechamento);
     map[m] = (map[m]||0) + Number(cl.valor||0);
+  });
+  return map;
+}
+/* Cash Collect: quanto do faturado já caiu na conta de verdade, não só o que foi fechado/contratado. Em venda à vista (o normal por aqui), valorRecebido = valor, não muda nada. Só importa quando tem parcelamento. */
+function receitaRecebidaPorMes(){
+  const map = {};
+  getClientes().forEach(cl=>{
+    if(!cl.dataFechamento) return;
+    const m = monthStr(cl.dataFechamento);
+    const recebido = cl.valorRecebido!==undefined ? Number(cl.valorRecebido) : Number(cl.valor||0);
+    map[m] = (map[m]||0) + recebido;
   });
   return map;
 }
@@ -765,7 +911,7 @@ const isLeadPerdido = l => !!(l.estagio && l.estagio.startsWith('Perdido'));
 const isLeadAberto = l => !isLeadGanho(l) && !isLeadPerdido(l);
 
 function crmKPIs(){
-  const leads = state.crm.leads;
+  const leads = getLeads();
   const mesAtual = todayStr().slice(0,7);
   const anoAtual = todayStr().slice(0,4);
   const leadsMes = leads.filter(l=>l.dataCriacao && l.dataCriacao.slice(0,7)===mesAtual);
@@ -788,14 +934,12 @@ function crmKPIs(){
   const leadsIndicacao = porOrigem['Indicação']||0;
   const taxaIndicacao = leads.length ? Math.round(leadsIndicacao/leads.length*100) : 0;
 
+  /* Pessoa que era lead E virou cliente: tempo de conversão é direto na mesma pessoa, sem precisar cruzar dois registros. */
   const temposConversao = [];
-  state.clientes.forEach(c=>{
-    if(c.leadId && c.dataFechamento){
-      const lead = leads.find(l=>l.id===c.leadId);
-      if(lead && lead.dataCriacao){
-        const dias = Math.round((new Date(c.dataFechamento+'T00:00:00') - new Date(lead.dataCriacao+'T00:00:00'))/86400000);
-        if(dias>=0) temposConversao.push(dias);
-      }
+  getClientes().forEach(c=>{
+    if(c.papeis.includes('lead') && c.dataCriacao && c.dataFechamento){
+      const dias = Math.round((new Date(c.dataFechamento+'T00:00:00') - new Date(c.dataCriacao+'T00:00:00'))/86400000);
+      if(dias>=0) temposConversao.push(dias);
     }
   });
   const tempoMedioConversao = temposConversao.length ? Math.round(temposConversao.reduce((a,b)=>a+b,0)/temposConversao.length) : null;
@@ -812,18 +956,94 @@ function crmKPIs(){
 }
 
 /* ===================== DASHBOARD ===================== */
+/* Funil visual — mesmos números do crmKPIs(), só numa leitura mais rápida (nós conectados) em vez de cards soltos */
+function renderFunilVisual(k){
+  if(!k.total) return '';
+  const nos = [
+    {label:'Leads recebidos', valor:k.total},
+    {label:'Em aberto', valor:k.abertos, pct: Math.round(k.abertos/k.total*100)},
+    {label:'Ganhos', valor:k.ganhos, pct: k.taxaConversaoGeral},
+    {label:'Perdidos', valor:k.perdidos, pct: k.taxaPerdaGeral}
+  ];
+  return `<div class="funil-visual">
+    ${nos.map((n,idx)=>`${idx>0?`<div class="funil-conexao"><div class="taxa">${n.pct}%</div><div class="linha"></div></div>`:''}<div class="funil-no"><div class="funil-circulo">${n.valor}</div><div class="funil-label">${n.label}</div></div>`).join('')}
+  </div>`;
+}
+/* Pilar 20 — Inteligência de negócio: insights de regra (heurísticas, não IA paga — decisão já tomada) cruzando dados que já existem. Só aparece quando a amostra é grande o suficiente pra não virar palpite. */
+function gerarInsights(){
+  const insights = [];
+  const clientes = getClientes();
+  const leads = getLeads();
+
+  const porProduto = {};
+  clientes.forEach(c=>{ if(c.produto){ if(!porProduto[c.produto]) porProduto[c.produto] = {vendas:0, faturamento:0}; porProduto[c.produto].vendas++; porProduto[c.produto].faturamento += Number(c.valor||0); } });
+  const produtosComVenda = Object.entries(porProduto);
+  if(produtosComVenda.length>=2){
+    produtosComVenda.sort((a,b)=>b[1].faturamento-a[1].faturamento);
+    const [nomeTop, dadosTop] = produtosComVenda[0];
+    insights.push(`Seu produto mais rentável é <b>${escHtml(nomeTop)}</b> — ${dadosTop.vendas} venda(s), ${fmtBRL(dadosTop.faturamento)} de faturamento.`);
+  }
+
+  const porOrigemStats = {};
+  leads.forEach(l=>{ const o = l.origem||'Não informado'; if(!porOrigemStats[o]) porOrigemStats[o] = {total:0, ganhos:0}; porOrigemStats[o].total++; if(isLeadGanho(l)) porOrigemStats[o].ganhos++; });
+  const origensRelevantes = Object.entries(porOrigemStats).filter(([,v])=>v.total>=3);
+  if(origensRelevantes.length>=2){
+    origensRelevantes.forEach(([,v])=>{ v.taxa = Math.round(v.ganhos/v.total*100); });
+    origensRelevantes.sort((a,b)=>b[1].taxa-a[1].taxa);
+    const [origemTop, statsTop] = origensRelevantes[0];
+    if(statsTop.taxa>0) insights.push(`Leads via <b>${escHtml(origemTop)}</b> convertem mais — ${statsTop.taxa}% de taxa de conversão (${statsTop.ganhos} de ${statsTop.total}).`);
+  }
+
+  const porCidade = {};
+  clientes.forEach(c=>{ if(c.cidade){ porCidade[c.cidade] = (porCidade[c.cidade]||0) + Number(c.valor||0); } });
+  const cidadesComReceita = Object.entries(porCidade);
+  if(cidadesComReceita.length>=2){
+    cidadesComReceita.sort((a,b)=>b[1]-a[1]);
+    const [cidadeTop, receitaTop] = cidadesComReceita[0];
+    insights.push(`<b>${escHtml(cidadeTop)}</b> é sua cidade com maior faturamento — ${fmtBRL(receitaTop)} até agora.`);
+  }
+
+  const quentes = leads.filter(l=>l.temperatura==='Quente' && isLeadAberto(l));
+  if(quentes.length>=1) insights.push(`Você tem <b>${quentes.length} lead(s) quente(s)</b> em aberto agora — priorize o contato com elas.`);
+
+  return insights;
+}
+/* Pilar 21 — reconhece a etapa real do Método ALMA em que cada cliente ativa está (primeira etapa do checklist ainda não concluída), não um status genérico. */
+function clientesPorEtapaMetodo(){
+  const porEtapa = {};
+  getClientes().filter(c=>c.status==='ativa').forEach(c=>{
+    const checklist = c.checklist||[];
+    if(!checklist.length) return;
+    const proxima = checklist.find(i=>!i.done);
+    const etapa = proxima ? proxima.step : 'Prestes a concluir';
+    porEtapa[etapa] = (porEtapa[etapa]||0) + 1;
+  });
+  return porEtapa;
+}
 function renderDashboard(){
   const mesAtual = todayStr().slice(0,7);
+  const mesAnterior = addMonths(mesAtual, -1);
   const metaMes = metaDoMes(mesAtual);
   const rec = receitaPorMes();
   const recMes = rec[mesAtual]||0;
+  const recMesAnterior = rec[mesAnterior]||0;
+  const variacaoReceita = recMesAnterior>0 ? Math.round((recMes-recMesAnterior)/recMesAnterior*100) : null;
   const faltaMes = Math.max(metaMes-recMes,0);
   const pct = metaMes? Math.min(100, Math.round(recMes/metaMes*100)) : 0;
 
-  const k = crmKPIs();
+  const recRecebida = receitaRecebidaPorMes();
+  const recRecebidaMes = recRecebida[mesAtual]||0;
+  const recRecebidaMesAnterior = recRecebida[mesAnterior]||0;
+  const variacaoCash = recRecebidaMesAnterior>0 ? Math.round((recRecebidaMes-recRecebidaMesAnterior)/recRecebidaMesAnterior*100) : null;
+  const aReceber = Math.max(recMes-recRecebidaMes,0);
+  const fmtVariacao = v => v===null? '' : ' · '+(v>=0?'↑':'↓')+Math.abs(v)+'% vs mês passado';
 
-  const ativas = state.clientes.filter(c=>c.status==='ativa').length;
-  const finalizadas = state.clientes.filter(c=>c.status==='finalizada').length;
+  const k = crmKPIs();
+  const insights = gerarInsights();
+  const etapasMetodo = clientesPorEtapaMetodo();
+
+  const ativas = getClientes().filter(c=>c.status==='ativa').length;
+  const finalizadas = getClientes().filter(c=>c.status==='finalizada').length;
 
   const followupsHoje = countFollowups('today');
   const followupsAtrasados = countFollowups('overdue');
@@ -838,16 +1058,39 @@ function renderDashboard(){
 
   return `
   <div class="grid grid-4">
-    <div class="card kpi"><div class="label">Meta do mês (${monthLabel(mesAtual)})</div><div class="value">${fmtBRL(metaMes)}</div><div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div><div class="sub">${pct}% atingido</div></div>
+    <div class="card kpi hero"><div class="label">Receita do mês (${monthLabel(mesAtual)})</div><div class="value">${fmtBRL(recMes)}</div><div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div><div class="sub">${pct}% da meta de ${fmtBRL(metaMes)}${fmtVariacao(variacaoReceita)}</div></div>
     <div class="card kpi"><div class="label">Falta pra meta do mês</div><div class="value">${fmtBRL(faltaMes)}</div><div class="sub">${Math.ceil(faltaMes/ticketMedio())} vendas (ticket médio ${fmtBRL(ticketMedio())})</div></div>
     <div class="card kpi"><div class="label">Clientes ativas / finalizadas</div><div class="value">${ativas} / ${finalizadas}</div><div class="sub">em atendimento / concluídas</div></div>
     <div class="card kpi"><div class="label">Leads no funil (em aberto)</div><div class="value">${k.abertos}</div><div class="sub">taxa de conversão geral: ${k.taxaConversaoGeral}%</div></div>
+  </div>
+  <div class="grid grid-2" style="margin-top:16px;">
+    <div class="card kpi"><div class="label">Cash Collect do mês</div><div class="value">${fmtBRL(recRecebidaMes)}</div><div class="sub">${recMes? Math.round(recRecebidaMes/recMes*100):0}% de ${fmtBRL(recMes)} faturados${fmtVariacao(variacaoCash)}</div></div>
+    <div class="card kpi"><div class="label">A receber (parcelas em aberto)</div><div class="value">${fmtBRL(aReceber)}</div><div class="sub">já fechado, ainda não caiu na conta</div></div>
   </div>
   <div class="grid grid-4" style="margin-top:16px;">
     <div class="card kpi" style="${followupsAtrasados>0?'border-color:var(--danger);background:#fdf5f4;':''}"><div class="label">Follow-ups hoje</div><div class="value">${followupsHoje}</div><div class="sub" style="${followupsAtrasados>0?'color:var(--danger);':''}">${followupsAtrasados} atrasados</div></div>
     <div class="card kpi"><div class="label">Investimento em tráfego</div><div class="value">${fmtBRL(investTrafego)}</div><div class="sub">CPL médio: ${fmtBRL(cpl)}</div></div>
     <div class="card kpi"><div class="label">Alcance médio por post</div><div class="value">${mediaAlcance}</div><div class="sub">${posts.length} posts registrados</div></div>
     <div class="card kpi"><div class="label">Salvamentos médios</div><div class="value">${mediaSalvos}</div><div class="sub">indicador-chave de valor percebido</div></div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">O que precisa da minha atenção hoje</h3>
+    ${renderAgendaHoje()}
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Panorama do negócio</h3>
+    <div class="grid grid-2">
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Insights automáticos</div>
+        ${insights.length? insights.map(i=>`<div class="insight-item">◆&nbsp; ${i}</div>`).join('') : emptyState('Ainda não há dados suficientes pra gerar insights confiáveis — aparecem aqui sozinhos conforme você for registrando mais vendas e leads.')}
+      </div>
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Clientes por etapa do Método ALMA</div>
+        ${Object.keys(etapasMetodo).length? Object.entries(etapasMetodo).sort((a,b)=>b[1]-a[1]).map(([etapa,n])=>`<div class="checklist-item"><span style="flex:1;">${escHtml(etapa)}</span><b>${n}</b></div>`).join('') : emptyState('Nenhuma cliente ativa com checklist em andamento agora.')}
+      </div>
+    </div>
   </div>
 
   <div class="card" style="margin-top:16px;">
@@ -861,33 +1104,30 @@ function renderDashboard(){
 
   <div class="card" style="margin-top:16px;">
     <h3 class="section-title">Indicadores de CRM / Leads</h3>
-    <div class="grid grid-4">
+    ${renderFunilVisual(k)}
+    <div class="grid grid-4" style="margin-top:18px;">
       <div class="kpi"><div class="label">Leads recebidos este mês</div><div class="value">${k.mes}</div><div class="sub">${k.ano} no ano · ${k.total} no total</div></div>
-      <div class="kpi"><div class="label">Taxa de conversão (mês)</div><div class="value">${k.taxaConversaoMes}%</div><div class="sub">geral: ${k.taxaConversaoGeral}%</div></div>
+      <div class="kpi"><div class="label">Taxa de conversão (mês)</div><div class="value">${k.taxaConversaoMes}%</div><div class="progress-wrap"><div class="progress-bar" style="width:${k.taxaConversaoMes}%"></div></div><div class="sub">geral: ${k.taxaConversaoGeral}%</div></div>
       <div class="kpi"><div class="label">Leads perdidos (mês)</div><div class="value">${k.perdidosMes}</div><div class="sub">${k.perdidos} no total · ${k.taxaPerdaGeral}% de perda geral</div></div>
       <div class="kpi"><div class="label">Fechados (ganhos) no mês</div><div class="value">${k.ganhosMes}</div><div class="sub">${k.ganhos} no total</div></div>
     </div>
     <div class="grid grid-3" style="margin-top:16px;">
       <div class="kpi"><div class="label">Leads em aberto</div><div class="value">${k.abertos}</div><div class="sub">ainda em andamento no funil</div></div>
-      <div class="kpi"><div class="label">Taxa de indicação</div><div class="value">${k.taxaIndicacao}%</div><div class="sub">${k.porOrigem['Indicação']||0} leads via indicação</div></div>
+      <div class="kpi"><div class="label">Taxa de indicação</div><div class="value">${k.taxaIndicacao}%</div><div class="progress-wrap"><div class="progress-bar" style="width:${k.taxaIndicacao}%"></div></div><div class="sub">${k.porOrigem['Indicação']||0} leads via indicação</div></div>
       <div class="kpi"><div class="label">Tempo médio até fechar</div><div class="value">${k.tempoMedioConversao!==null? k.tempoMedioConversao+' dias' : '—'}</div><div class="sub">${k.tempoMedioConversao!==null? 'baseado em '+k.amostraConversao+' conversão(ões)' : 'sem conversões suficientes ainda'}</div></div>
     </div>
     <div class="grid grid-2" style="margin-top:16px;">
       <div>
         <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Leads por origem</div>
-        ${Object.keys(k.porOrigem).length? Object.entries(k.porOrigem).map(([o,n])=>`<div class="checklist-item"><span style="flex:1;">${o}</span><b>${n}</b></div>`).join('') : '<div class="empty-state">Sem leads cadastrados ainda.</div>'}
+        ${Object.keys(k.porOrigem).length? Object.entries(k.porOrigem).map(([o,n])=>`<div class="checklist-item"><span style="flex:1;">${o}</span><b>${n}</b></div>`).join('') : emptyState('Sem leads cadastrados ainda.')}
       </div>
       <div>
         <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Motivos de perda</div>
-        ${Object.keys(k.motivosPerda).length? Object.entries(k.motivosPerda).map(([m,n])=>`<div class="checklist-item"><span style="flex:1;">${m}</span><b>${n}</b></div>`).join('') : '<div class="empty-state">Nenhum lead perdido até agora.</div>'}
+        ${Object.keys(k.motivosPerda).length? Object.entries(k.motivosPerda).map(([m,n])=>`<div class="checklist-item"><span style="flex:1;">${m}</span><b>${n}</b></div>`).join('') : emptyState('Nenhum lead perdido até agora.')}
       </div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:16px;">
-    <h3 class="section-title">O que precisa da minha atenção hoje</h3>
-    ${renderAgendaHoje()}
-  </div>
   <div class="note" style="margin-top:16px;">Dashboard de negócio digital — os indicadores acima cruzam dados de Metas, CRM, Clientes, Tráfego e Conteúdo. Quanto mais você registrar nos outros módulos, mais completo fica este painel.</div>
   `;
 }
@@ -901,10 +1141,10 @@ function renderMiniMeta(label, meses){
 }
 function countFollowups(kind){
   let n=0;
-  state.crm.leads.forEach(l=>{ if(!l.proximoFollowUp) return; const d=daysDiff(l.proximoFollowUp);
+  getLeads().forEach(l=>{ if(!l.proximoFollowUp) return; const d=daysDiff(l.proximoFollowUp);
     if(kind==='today' && d===0) n++; if(kind==='overdue' && d<0) n++;
   });
-  state.clientes.forEach(cl=>{ if(!cl.proximoReminder) return; const d=daysDiff(cl.proximoReminder);
+  getClientes().forEach(cl=>{ if(!cl.proximoReminder) return; const d=daysDiff(cl.proximoReminder);
     if(kind==='today' && d===0) n++; if(kind==='overdue' && d<0) n++;
   });
   return n;
@@ -917,23 +1157,37 @@ function diasSemAtividade(historico, dataFallback){
 }
 function getAtencaoHoje(){
   const items = [];
-  state.crm.leads.forEach(l=>{ if(l.proximoFollowUp){ const d=daysDiff(l.proximoFollowUp); if(d<=0) items.push({tipo:'Follow-up CRM', nome:l.nome, data:l.proximoFollowUp, atraso:d<0, link:()=>abrirFicha(l.id), concluir:()=>{ l.proximoFollowUp=''; save(); render(); }});} });
-  state.clientes.forEach(cl=>{ if(cl.proximoReminder){ const d=daysDiff(cl.proximoReminder); if(d<=0) items.push({tipo:'Cliente aguardando retorno ('+(cl.tipoReminder||'check-in')+')', nome:cl.nome, data:cl.proximoReminder, atraso:d<0, link:()=>abrirChecklist(cl.id), concluir:()=>{ cl.proximoReminder=''; save(); render(); }}); } });
+  getLeads().forEach(l=>{ if(l.proximoFollowUp){ const d=daysDiff(l.proximoFollowUp); if(d<=0) items.push({tipo:'Follow-up CRM', nome:l.nome, data:l.proximoFollowUp, atraso:d<0, link:()=>abrirFicha(l.id), concluir:()=>{ l.proximoFollowUp=''; save(); render(); }});} });
+  getClientes().forEach(cl=>{ if(cl.proximoReminder){ const d=daysDiff(cl.proximoReminder); if(d<=0) items.push({tipo:'Cliente aguardando retorno ('+(cl.tipoReminder||'check-in')+')', nome:cl.nome, data:cl.proximoReminder, atraso:d<0, link:()=>abrirChecklist(cl.id), concluir:()=>{ cl.proximoReminder=''; save(); render(); }}); } });
   state.gestao.tarefas.forEach(t=>{ if(t.status!=='Concluído' && t.prazo){ const d=daysDiff(t.prazo); if(d<=0) items.push({tipo:'Tarefa'+(t.prioridade==='Alta'?' prioritária':''), nome:t.titulo, data:t.prazo, atraso:d<0, link:()=>abrirFichaTarefa(t.id), concluir:()=>{ logMudancaStatus(t,'Status',t.status,'Concluído'); t.status='Concluído'; save(); render(); }}); } });
   state.agenda.eventos.filter(e=>e.data===todayStr()).forEach(e=> items.push({tipo:'Agenda hoje', nome:e.titulo+(e.hora?' às '+e.hora:''), data:e.data, atraso:false}));
   state.gestao.reunioes.filter(r=>r.data===todayStr()).forEach(r=> items.push({tipo:'Reunião hoje', nome:r.pauta.slice(0,50), data:r.data, atraso:false}));
   /* Heurísticas extras — insights derivados, não dados brutos novos */
-  state.clientes.forEach(cl=>{
+  getClientes().forEach(cl=>{
     if(cl.status==='ativa'){
       const dias = diasSemAtividade(cl.historico, cl.dataFechamento);
-      if(dias!==null && dias>=15) items.push({tipo:'Cliente sem movimentação há '+dias+' dias', nome:cl.nome, data:todayStr(), atraso:true, link:()=>abrirChecklist(cl.id)});
+      const checklistCl = cl.checklist||[];
+      const pctChecklist = checklistCl.length? Math.round(checklistCl.filter(i=>i.done).length/checklistCl.length*100) : 0;
+      if(dias!==null && pctChecklist>=70 && pctChecklist<100 && dias>=7){
+        items.push({tipo:'Checklist quase completo ('+pctChecklist+'%) mas parada há '+dias+' dias', nome:cl.nome, data:todayStr(), atraso:true, link:()=>abrirChecklist(cl.id)});
+      } else if(dias!==null && dias>=15){
+        items.push({tipo:'Cliente sem movimentação há '+dias+' dias', nome:cl.nome, data:todayStr(), atraso:true, link:()=>abrirChecklist(cl.id)});
+      }
     }
     if(cl.status==='finalizada'){
       const pediuDepoimento = (cl.historico||[]).some(h=>/depoimento/i.test(h.nota||''));
       if(!pediuDepoimento) items.push({tipo:'Depoimento não pedido', nome:cl.nome, data:cl.dataFechamento||todayStr(), atraso:false, link:()=>abrirChecklist(cl.id)});
+      const upgradeSugerido = UPGRADE_METODO_ALMA[cl.produto];
+      if(upgradeSugerido){
+        const diasFinalizada = diasSemAtividade(cl.historico, cl.dataFechamento);
+        const jaSugeriuUpgrade = (cl.historico||[]).some(h=>/upgrade/i.test(h.nota||''));
+        if(diasFinalizada!==null && diasFinalizada>=60 && !jaSugeriuUpgrade){
+          items.push({tipo:'Momento de oferecer upgrade → '+upgradeSugerido, nome:cl.nome, data:todayStr(), atraso:false, link:()=>abrirChecklist(cl.id)});
+        }
+      }
     }
   });
-  state.crm.leads.forEach(l=>{
+  getLeads().forEach(l=>{
     if(l.estagio==='Proposta Enviada' && !l.proximoFollowUp){
       const dias = diasSemAtividade(l.historico, l.dataCriacao);
       if(dias!==null && dias>=7) items.push({tipo:'Proposta esfriando ('+dias+' dias sem follow-up)', nome:l.nome, data:todayStr(), atraso:true, link:()=>abrirFicha(l.id)});
@@ -961,7 +1215,7 @@ function renderAgendaHoje(){
   const items = atencaoHojeCache;
   const risco = metaEmRisco();
   const riscoHtml = risco ? `<div class="note" style="background:#f3dcd8;color:#8f3b31;margin-bottom:12px;">${risco}</div>` : '';
-  if(items.length===0) return riscoHtml + '<div class="empty-state">Nada pendente pra hoje.</div>';
+  if(items.length===0) return riscoHtml + emptyState('Nada pendente pra hoje.');
   return riscoHtml + `<table><thead><tr><th>Tipo</th><th>Quem/O quê</th><th>Data</th><th></th></tr></thead><tbody>${items.map((i,idx)=>`<tr ${i.link?`onclick="atencaoHojeCache[${idx}].link()" style="cursor:pointer;"`:''}><td>${escHtml(i.tipo)}</td><td>${escHtml(i.nome)}</td><td>${i.atraso?'<span class="tag overdue">Atrasado — '+fmtDate(i.data)+'</span>':fmtDate(i.data)}</td><td>${i.concluir?`<button class="btn ghost xs" onclick="event.stopPropagation(); concluirItemAtencao(${idx})">Concluir</button>`:''}</td></tr>`).join('')}</tbody></table>`;
 }
 
@@ -988,15 +1242,88 @@ function renderMetas(){
     </div>
   </div>
   <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Calculadora Comercial</h3>
+    <div class="note" style="margin-top:0;">Informe sua meta e descubra o que precisa acontecer operacionalmente pra atingi-la — quantas conversas, propostas e vendas por dia. É uma simulação: mude os números à vontade pra testar cenários.</div>
+    ${renderCalculadoraComercial()}
+  </div>
+  <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Cronograma de metas mensais</h3><button class="btn gold xs" onclick="addMesMeta()">+ Adicionar mês</button></div>
     <table><thead><tr><th>Mês</th><th>Meta</th><th>Realizado</th><th>Falta (R$)</th><th>Falta (vendas)</th><th></th></tr></thead><tbody>${rows}</tbody></table>
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Produtos / Serviços</h3><button class="btn gold xs" onclick="addProduto()">+ Adicionar produto</button></div>
-    <table><thead><tr><th>Produto</th><th>Preço</th><th>Descrição</th><th></th></tr></thead><tbody>
-    ${state.meta.produtos.map(p=>`<tr><td>${escHtml(p.nome)}</td><td>${fmtBRL(p.preco)}</td><td>${escHtml(p.descricao)}</td><td><button class="btn ghost xs" onclick="editProduto('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delProduto('${p.id}')">Excluir</button></td></tr>`).join('')}
+    <table><thead><tr><th>Produto</th><th>Preço</th><th>Vendas</th><th>Faturamento gerado</th><th>Descrição</th><th></th></tr></thead><tbody>
+    ${state.meta.produtos.map(p=>{
+      const clientesProduto = getClientes().filter(c=>c.produto===p.nome);
+      const faturamento = clientesProduto.reduce((a,c)=>a+Number(c.valor||0),0);
+      return `<tr><td>${escHtml(p.nome)}</td><td>${fmtBRL(p.preco)}</td><td>${clientesProduto.length}</td><td>${fmtBRL(faturamento)}</td><td>${escHtml(p.descricao)}</td><td><button class="btn ghost xs" onclick="editProduto('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delProduto('${p.id}')">Excluir</button></td></tr>`;
+    }).join('')}
     </tbody></table>
   </div>`;
+}
+/* Calculadora Comercial — funil reverso: meta -> vendas -> propostas -> conversas, e o mesmo dividido por dia útil. Pura matemática (sem IA), inputs salvos sozinhos a cada mudança, sem precisar de "Salvar". */
+function calculadoraComercialAtual(){
+  return state.meta.calculadoraComercial || {
+    metaFaturamento: metaDoMes(todayStr().slice(0,7)) || 0,
+    ticketMedio: Number(state.meta.ticketMedio)||0,
+    conversaProposta: 10,
+    propostaVenda: 30,
+    diasUteis: 22
+  };
+}
+function renderCalculadoraComercial(){
+  const c = calculadoraComercialAtual();
+  return `
+  <div class="grid grid-2">
+    <div>
+      <div class="field"><label>Meta de faturamento mensal</label><input id="calc-meta" type="number" value="${c.metaFaturamento||''}" oninput="atualizarCalculadoraComercial()"></div>
+      <div class="field"><label>Ticket médio do produto</label><input id="calc-ticket" type="number" value="${c.ticketMedio||''}" oninput="atualizarCalculadoraComercial()"></div>
+      <div class="grid grid-2">
+        <div class="field"><label>Conversa → Proposta (%)</label><input id="calc-cp" type="number" value="${c.conversaProposta}" oninput="atualizarCalculadoraComercial()"></div>
+        <div class="field"><label>Proposta → Venda (%)</label><input id="calc-pv" type="number" value="${c.propostaVenda}" oninput="atualizarCalculadoraComercial()"></div>
+      </div>
+      <div class="field"><label>Dias úteis no mês</label><input id="calc-dias" type="number" value="${c.diasUteis}" oninput="atualizarCalculadoraComercial()"></div>
+      <button class="btn ghost xs" onclick="limparCalculadoraComercial()">↺ Limpar simulação</button>
+    </div>
+    <div>
+      <div class="calc-comercial" id="calc-comercial-output">${renderFunilComercialOutput(c)}</div>
+    </div>
+  </div>
+  <div class="note" style="margin-top:14px;">Referência · métricas médias de mercado: <b>10%</b> Conversa → Proposta (a cada 100 conversas, ~10 evoluem pra proposta) · <b>30%</b> Proposta → Venda (a cada 10 propostas, ~3 fecham) · <b>3%</b> Conversa → Venda no total.</div>`;
+}
+function fmtCalc(n){ const r = Math.round(n*10)/10; return (r % 1 === 0 ? String(r) : String(r.toFixed(1))).replace('.', ','); }
+function renderFunilComercialOutput(c){
+  const vendasNecessarias = c.ticketMedio>0 ? Math.ceil(c.metaFaturamento/c.ticketMedio) : 0;
+  const propostasNoMes = c.propostaVenda>0 ? Math.ceil(vendasNecessarias/(c.propostaVenda/100)) : 0;
+  const conversasNoMes = c.conversaProposta>0 ? Math.ceil(propostasNoMes/(c.conversaProposta/100)) : 0;
+  const conversasPorDia = c.diasUteis>0 ? conversasNoMes/c.diasUteis : 0;
+  const propostasPorDia = c.diasUteis>0 ? propostasNoMes/c.diasUteis : 0;
+  const semanasNoMes = c.diasUteis>0 ? c.diasUteis/5 : 0;
+  const vendasPorSemana = semanasNoMes>0 ? vendasNecessarias/semanasNoMes : 0;
+  return `
+    <div class="fc-row mensal"><span class="fc-icon">📈</span><span class="fc-numero">${vendasNecessarias}</span><div class="fc-texto"><div class="fc-label">Vendas necessárias</div><div class="fc-sub">${fmtBRL(c.metaFaturamento)} ÷ ${fmtBRL(c.ticketMedio)}</div></div></div>
+    <div class="fc-row mensal"><span class="fc-icon">📄</span><span class="fc-numero">${propostasNoMes}</span><div class="fc-texto"><div class="fc-label">Propostas no mês</div><div class="fc-sub">vendas ÷ taxa proposta → venda</div></div></div>
+    <div class="fc-row mensal"><span class="fc-icon">💬</span><span class="fc-numero">${conversasNoMes}</span><div class="fc-texto"><div class="fc-label">Conversas no mês</div><div class="fc-sub">propostas ÷ taxa conversa → proposta</div></div></div>
+    <div class="fc-divisor">Meta diária · por dia útil</div>
+    <div class="fc-row diaria"><span class="fc-icon">💬</span><span class="fc-numero">${fmtCalc(conversasPorDia)}</span><div class="fc-texto"><div class="fc-label">Conversas por dia</div><div class="fc-sub">em cada dia útil do mês</div></div></div>
+    <div class="fc-row diaria"><span class="fc-icon">📄</span><span class="fc-numero">${fmtCalc(propostasPorDia)}</span><div class="fc-texto"><div class="fc-label">Propostas por dia</div><div class="fc-sub">em cada dia útil do mês</div></div></div>
+    <div class="fc-row diaria"><span class="fc-icon">📈</span><span class="fc-numero">${fmtCalc(vendasPorSemana)}</span><div class="fc-texto"><div class="fc-label">Vendas por semana</div><div class="fc-sub">aproximado</div></div></div>`;
+}
+function atualizarCalculadoraComercial(){
+  const c = {
+    metaFaturamento: Number(document.getElementById('calc-meta').value)||0,
+    ticketMedio: Number(document.getElementById('calc-ticket').value)||0,
+    conversaProposta: Number(document.getElementById('calc-cp').value)||0,
+    propostaVenda: Number(document.getElementById('calc-pv').value)||0,
+    diasUteis: Number(document.getElementById('calc-dias').value)||0
+  };
+  state.meta.calculadoraComercial = c;
+  save();
+  document.getElementById('calc-comercial-output').innerHTML = renderFunilComercialOutput(c);
+}
+function limparCalculadoraComercial(){
+  state.meta.calculadoraComercial = null;
+  save(); render();
 }
 function editMetaMes(month){
   const item = state.meta.schedule.find(s=>s.month===month);
@@ -1026,12 +1353,12 @@ let crmDisplayMode = 'tabela';
 function setCrmDisplayMode(m){ crmDisplayMode = m; render(); }
 function renderCRM(){
   if(crmView==='ficha' && crmFichaId){
-    const l = state.crm.leads.find(x=>x.id===crmFichaId);
-    if(l) return renderFichaLead(l);
+    const l = state.pessoas.find(x=>x.id===crmFichaId);
+    if(l) return renderFichaPessoa(l, 'Voltar ao funil', 'fecharFicha()');
     crmView='funil'; crmFichaId=null;
   }
   const stages = state.crm.stages;
-  const leads = state.crm.leads;
+  const leads = getLeads();
   const cadenciaInfo = `
   <div class="note">
   <b>Cadência de follow-up recomendada:</b> Novo Lead → sem resposta: D+1, D+3, D+7 (depois reduz prioridade) · Contato Iniciado → agendar diagnóstico em até D+2 · Diagnóstico Agendado → lembrete 1 dia antes + 1h antes · Diagnóstico Realizado → enviar proposta em até 24h · Proposta Enviada → D+1, D+3, D+5, D+7 (script pronto na aba Scripts) · Aguardando Decisão → reforçar valor a cada poucos dias até ela decidir · Sem Retorno / Momento Inadequado → reativar em D+30 · Perdido (qualquer motivo) → reativar em D+30 e D+90.
@@ -1041,8 +1368,8 @@ function renderCRM(){
     const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
     let fuTag = '—';
     if(fu!==null){ fuTag = `<span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span>`; }
-    return `<tr><td>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
-    <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.convertido? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
+    return `<tr><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(l.nome))}</span>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
+    <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.papeis.includes('cliente')? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
   }).join('');
   return `
   ${cadenciaInfo}
@@ -1055,7 +1382,7 @@ function renderCRM(){
       </div>
       <button class="btn gold xs" onclick="addLead()">+ Novo lead</button>
     </div>
-    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads, 'estagio', 'leads') : (leads.length? `<table><thead><tr><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty-state">Nenhum lead cadastrado ainda. Clique em "Novo lead" para começar.</div>')}
+    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads, 'estagio', 'leads') : (leads.length? `<table><thead><tr><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : emptyState('Nenhum lead cadastrado ainda.', '<button class="btn gold xs" onclick="addLead()">+ Novo lead</button>'))}
   </div>
   <div class="card" style="margin-top:16px;">
     <h3 class="section-title">Resumo por estágio</h3>
@@ -1064,7 +1391,7 @@ function renderCRM(){
 }
 /* Kanban genérico com drag-and-drop — reaproveitado pelo funil do CRM (por estágio) e pelas Tarefas (por status) */
 function renderKanban(colunas, itens, campoColuna, contexto){
-  if(!itens.length) return '<div class="empty-state">Nada cadastrado ainda.</div>';
+  if(!itens.length) return emptyState('Nada cadastrado ainda.');
   /* No funil de leads, compacta as variações de "Perdido" numa faixa só — o motivo específico continua visível em cada cartão, só não ocupa uma coluna inteira cada um. */
   let colDefs = colunas.map(c=>({label:c, valores:[c]}));
   if(contexto==='leads'){
@@ -1088,21 +1415,31 @@ function renderKanban(colunas, itens, campoColuna, contexto){
 function renderKanbanCard(it, contexto, mostrarMotivo){
   if(contexto==='tarefas'){
     const prazoTag = it.prazo ? `<div style="margin-top:6px;"><span class="tag ${daysDiff(it.prazo)<0?'overdue':(daysDiff(it.prazo)===0?'today':'upcoming')}">${fmtDate(it.prazo)}</span></div>` : '';
+    const ultimaNotaTarefa = ultimaInteracao(it.historico);
     return `<div class="kanban-card" draggable="true" ondragstart="onCardDragStart(event,'${it.id}')" onclick="abrirFichaTarefa('${it.id}')">
-      <div class="nome">${escHtml(it.titulo)}</div>
+      <div class="kanban-card-head"><span class="kanban-avatar">${escHtml(inicialNome(it.responsavel))}</span><span class="nome" style="margin-bottom:0;">${escHtml(it.titulo)}</span></div>
       <div class="small-muted">${escHtml(it.responsavel)}${it.prioridade? ' · '+escHtml(it.prioridade):''}</div>
+      ${ultimaNotaTarefa? `<div class="ultima-nota">"${escHtml(ultimaNotaTarefa)}"</div>` : ''}
       ${prazoTag}
     </div>`;
   }
   const fu = it.proximoFollowUp ? daysDiff(it.proximoFollowUp) : null;
   const fuTag = fu!==null ? `<div style="margin-top:6px;"><span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(it.proximoFollowUp)}</span></div>` : '';
   const motivoTag = mostrarMotivo ? `<div class="small-muted" style="margin-top:4px;font-style:italic;">${escHtml(it.estagio)}</div>` : '';
+  const ultimaNota = ultimaInteracao(it.historico);
   return `<div class="kanban-card" draggable="true" ondragstart="onCardDragStart(event,'${it.id}')" onclick="abrirFicha('${it.id}')">
-    <div class="nome">${escHtml(it.nome)}</div>
+    <div class="kanban-card-head"><span class="kanban-avatar">${escHtml(inicialNome(it.nome))}</span><span class="nome" style="margin-bottom:0;">${escHtml(it.nome)}</span></div>
     <div class="small-muted">${fmtBRL(it.valorEstimado)}</div>
+    ${ultimaNota? `<div class="ultima-nota">"${escHtml(ultimaNota)}"</div>` : ''}
     ${motivoTag}
     ${fuTag}
   </div>`;
+}
+function inicialNome(nome){ return (nome||'?').trim().charAt(0).toUpperCase() || '?'; }
+function ultimaInteracao(historico){
+  if(!historico || !historico.length) return '';
+  const nota = historico.slice().sort((a,b)=>b.data.localeCompare(a.data))[0].nota || '';
+  return nota.length>70 ? nota.slice(0,70)+'…' : nota;
 }
 function onCardDragStart(ev, itemId){ ev.dataTransfer.setData('text/plain', itemId); ev.dataTransfer.effectAllowed = 'move'; }
 function onColDragOver(ev){ ev.preventDefault(); ev.currentTarget.style.background = '#e8ddc8'; }
@@ -1111,53 +1448,74 @@ function onColDrop(ev, novoValor, contexto, campoColuna){
   ev.preventDefault();
   ev.currentTarget.style.background = '';
   const itemId = ev.dataTransfer.getData('text/plain');
-  const colecao = contexto==='tarefas' ? state.gestao.tarefas : state.crm.leads;
+  const colecao = contexto==='tarefas' ? state.gestao.tarefas : getLeads();
   const item = colecao.find(x=>x.id===itemId);
   if(item && item[campoColuna] !== novoValor){
     const valorAntes = item[campoColuna];
     item[campoColuna] = novoValor;
     logMudancaStatus(item, campoColuna==='estagio'?'Estágio':'Status', valorAntes, novoValor);
     save(); render();
-    if(contexto==='leads' && novoValor==='Fechado - Ganho' && valorAntes!=='Fechado - Ganho' && !item.convertido) converterCliente(item.id);
+    if(contexto==='leads' && novoValor==='Fechado - Ganho' && valorAntes!=='Fechado - Ganho' && !item.papeis.includes('cliente')) converterCliente(item.id);
   }
 }
 function leadFields(){
   return [
     {key:'nome', label:'Nome', type:'text', required:true},
     {key:'contato', label:'Contato (WhatsApp/Instagram)', type:'text'},
+    {key:'dataCriacao', label:'Data de entrada', type:'date', required:true},
     {key:'origem', label:'Origem', type:'select', options:['Instagram','TikTok','WhatsApp','Indicação','Tráfego pago','Outro']},
     {key:'estagio', label:'Estágio', type:'select', options: state.crm.stages},
+    {key:'temperatura', label:'Temperatura', type:'select', options:['Quente','Morna','Fria']},
     {key:'valorEstimado', label:'Valor estimado (R$)', type:'number'},
     {key:'proximoFollowUp', label:'Próximo follow-up', type:'date'},
     {key:'profissao', label:'Profissão', type:'text'},
+    {key:'empresa', label:'Empresa', type:'text'},
     {key:'cidade', label:'Cidade', type:'text'},
+    {key:'redesSociais', label:'Redes sociais (@ / link)', type:'text'},
     {key:'estiloComunicacao', label:'Estilo de comunicação', type:'select', options:['Direto e objetivo','Caloroso e detalhista','Analítico/racional','Emocional/sensível','Ainda não sei']},
     {key:'dores', label:'Dores / o que a incomoda hoje', type:'textarea'},
     {key:'objetivos', label:'Objetivos / onde quer chegar', type:'textarea'},
+    {key:'tags', label:'Tags (separadas por vírgula)', type:'text'},
     {key:'notas', label:'Notas gerais', type:'textarea'}
   ];
 }
 function addLead(){
-  openModal('Novo lead', leadFields(), {estagio: state.crm.stages[0]});
-  modalOnSave = (data)=>{ state.crm.leads.push(Object.assign({id:uid(), dataCriacao:todayStr(), convertido:false, historico:[]}, data, {valorEstimado:Number(data.valorEstimado||0)})); save(); render(); };
+  openModal('Novo lead', leadFields(), {estagio: state.crm.stages[0], dataCriacao: todayStr()});
+  modalOnSave = (data)=>{
+    const nova = Object.assign({id:uid(), papeis:['lead'], historico:[]}, data, {valorEstimado:Number(data.valorEstimado||0)});
+    nova.historico.push({id:uid(), data:nova.dataCriacao||todayStr(), tipo:'Mudança de status', nota:'Lead criada'+(nova.origem?' — origem: '+nova.origem:'')+'.', autor:getUsuarioAtual()||''});
+    state.pessoas.push(nova); save(); render();
+  };
 }
 function editLead(id){
-  const l = state.crm.leads.find(x=>x.id===id);
+  const l = getLeads().find(x=>x.id===id);
   const estagioAntes = l.estagio;
   openModal('Editar lead', leadFields(), l);
   modalOnSave = (data)=>{
     Object.assign(l, data, {valorEstimado:Number(data.valorEstimado||0)});
     logMudancaStatus(l, 'Estágio', estagioAntes, l.estagio);
     save(); render();
-    if(l.estagio==='Fechado - Ganho' && estagioAntes!=='Fechado - Ganho' && !l.convertido) converterCliente(l.id);
+    if(l.estagio==='Fechado - Ganho' && estagioAntes!=='Fechado - Ganho' && !l.papeis.includes('cliente')) converterCliente(l.id);
   };
 }
-function delLead(id){ confirmarAcao('Excluir este lead?', ()=>{ state.crm.leads = state.crm.leads.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+/* Excluir só remove o papel — se a pessoa também for cliente (ou outro papel), o registro continua existindo, só sai da visão de Leads. Só apaga de vez quando não sobra nenhum papel. */
+function delLead(id){
+  confirmarAcao('Excluir este lead?', ()=>{
+    const p = state.pessoas.find(x=>x.id===id);
+    if(p && p.papeis.length>1) p.papeis = p.papeis.filter(pp=>pp!=='lead');
+    else state.pessoas = state.pessoas.filter(x=>x.id!==id);
+    save(); render();
+  }, {perigo:true, textoConfirmar:'Excluir'});
+}
 
 /* Ficha do lead: perfil completo + histórico/timeline de interações */
 let crmView = 'funil';
 let crmFichaId = null;
-function abrirFicha(id){ crmFichaId = id; crmView = 'ficha'; setTab('crm'); }
+function abrirFicha(id){
+  const p = state.pessoas.find(x=>x.id===id);
+  if(p) registrarRecente('Lead', id, p.nome, ()=>abrirFicha(id));
+  crmFichaId = id; crmView = 'ficha'; setTab('crm');
+}
 function fecharFicha(){ crmView = 'funil'; crmFichaId = null; render(); }
 /* Histórico/timeline genérico — reaproveitado por leads, clientes e tarefas (mesmo shape, uma lógica só). Comentário interno é apenas tipo:'Comentário' dentro do mesmo array, não uma estrutura separada. */
 function historicoFields(tipoDefault){
@@ -1168,8 +1526,9 @@ function historicoFields(tipoDefault){
   ];
 }
 function getColecao(colName){
-  if(colName==='leads') return state.crm.leads;
-  if(colName==='clientes') return state.clientes;
+  if(colName==='leads') return getLeads();
+  if(colName==='clientes') return getClientes();
+  if(colName==='pessoas') return state.pessoas;
   if(colName==='tarefas') return state.gestao.tarefas;
 }
 /* Timeline automática — registra sozinha no histórico (mesma estrutura já usada pelos comentários manuais) toda vez que um campo de status importante muda, sem precisar digitar nada. */
@@ -1202,55 +1561,101 @@ function renderHistoricoBloco(colName, itemId, historicoArr){
       <button class="btn ghost xs" onclick="addHistoricoGenerico('${colName}','${itemId}','Comentário')">+ Comentário interno</button>
       <button class="btn gold xs" onclick="addHistoricoGenerico('${colName}','${itemId}')">+ Registrar interação</button>
     </div>
-    ${historico.length? historico.map(h=>`<div class="script-card"><h4>${fmtDate(h.data)} — ${escHtml(h.tipo)}${h.autor?' · '+escHtml(h.autor):''}</h4><pre>${escHtml(h.nota)}</pre><button class="btn danger xs" onclick="delHistoricoGenerico('${colName}','${itemId}','${h.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nada registrado ainda. Mensagens, ligações, mudanças de status e comentários internos da equipe entram aqui.</div>'}
+    ${historico.length? historico.map(h=>`<div class="script-card"><h4>${fmtDate(h.data)} — ${escHtml(h.tipo)}${h.autor?' · '+escHtml(h.autor):''}</h4><pre>${escHtml(h.nota)}</pre><button class="btn danger xs" onclick="delHistoricoGenerico('${colName}','${itemId}','${h.id}')">Excluir</button></div>`).join('') : emptyState('Nada registrado ainda. Mensagens, ligações, mudanças de status e comentários internos da equipe entram aqui.')}
   </div>`;
 }
-/* Compatibilidade com o nome usado antes (ficha do lead) */
-function addHistorico(leadId){ addHistoricoGenerico('leads', leadId); }
-function delHistorico(leadId, histId){ delHistoricoGenerico('leads', leadId, histId); }
-function renderFichaLead(l){
+/* Pilar 4 — Visão 360°: ficha única da pessoa, sem trocar de módulo. Mostra os campos de lead E de cliente na mesma tela quando aplicável (mesma pessoa, papéis diferentes), reaproveitando os mesmos blocos de checklist/tarefas/agenda/financeiro/histórico. */
+function renderFichaPessoa(p, voltarLabel, voltarFn){
+  const ehLead = p.papeis && p.papeis.includes('lead');
+  const ehCliente = p.papeis && p.papeis.includes('cliente');
+  const tarefasRel = state.gestao.tarefas.filter(t=>t.clienteId===p.id);
+  const eventosRel = state.agenda.eventos.filter(e=>e.clienteId===p.id).sort((a,b)=>a.data.localeCompare(b.data));
+  const financeiroRel = [
+    ...state.financeiro.entradas.filter(e=>e.clienteId===p.id).map(e=>({...e, tipo:'entrada'})),
+    ...state.financeiro.saidas.filter(e=>e.clienteId===p.id).map(e=>({...e, tipo:'saída'}))
+  ].sort((a,b)=>b.data.localeCompare(a.data));
+  const dias = diasSemAtividade(p.historico, p.dataFechamento||p.dataCriacao);
+  const alertaAtividade = (dias!==null && dias>=15)? `<div class="tag overdue" style="margin-bottom:10px;display:inline-block;">Sem atividade há ${dias} dias</div>` : '';
+  const tagsHtml = p.tags? p.tags.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="tag upcoming" style="margin-right:4px;">${escHtml(t)}</span>`).join('') : '';
   return `
-  <div class="toolbar"><button class="btn ghost xs" onclick="fecharFicha()">← Voltar ao funil</button></div>
+  <div class="toolbar"><button class="btn ghost xs" onclick="${voltarFn}">← ${voltarLabel}</button></div>
   <div class="card">
-    <div class="toolbar"><h3 class="section-title" style="margin:0;">${escHtml(l.nome)}</h3><button class="btn ghost xs" onclick="editLead('${l.id}')">Editar dados</button></div>
-    <div class="grid grid-3">
-      <div><div class="small-muted" style="font-weight:600;">Estágio</div><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></div>
-      <div><div class="small-muted" style="font-weight:600;">Contato</div>${escHtml(l.contato)||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Origem</div>${escHtml(l.origem)||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Profissão</div>${escHtml(l.profissao)||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Cidade</div>${escHtml(l.cidade)||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Estilo de comunicação</div>${escHtml(l.estiloComunicacao)||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Valor estimado</div>${fmtBRL(l.valorEstimado)}</div>
-      <div><div class="small-muted" style="font-weight:600;">Data de entrada</div>${fmtDate(l.dataCriacao)}</div>
-      <div><div class="small-muted" style="font-weight:600;">Próximo follow-up</div>${l.proximoFollowUp? fmtDate(l.proximoFollowUp):'—'}</div>
+    <div class="toolbar"><span class="kanban-avatar" style="width:38px;height:38px;font-size:14px;">${escHtml(inicialNome(p.nome))}</span><h3 class="section-title" style="margin:0;">${escHtml(p.nome)}</h3>
+      ${ehLead? `<button class="btn ghost xs" onclick="editLead('${p.id}')">Editar dados de lead</button>`:''}
+      ${ehCliente? `<button class="btn ghost xs" onclick="editCliente('${p.id}')">Editar dados de cliente</button>`:''}
     </div>
-    <div class="grid grid-2" style="margin-top:14px;">
-      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Dores</div><div style="font-size:13.5px;">${escHtml(l.dores)||'—'}</div></div>
-      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Objetivos</div><div style="font-size:13.5px;">${escHtml(l.objetivos)||'—'}</div></div>
+    ${ehLead? `<span class="tag ${stageColorClass(p.estagio)}">${escHtml(p.estagio)}</span>` : ''} ${ehCliente? `<span class="tag status-${p.status}">${escHtml(p.status)}</span>` : ''}
+    ${alertaAtividade? `<div style="margin-top:10px;">${alertaAtividade}</div>` : ''}
+    <div class="grid grid-4" style="margin-top:12px;">
+      <div><div class="small-muted" style="font-weight:600;">Contato</div>${escHtml(p.contato)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Cidade</div>${escHtml(p.cidade)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Profissão</div>${escHtml(p.profissao)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Empresa</div>${escHtml(p.empresa)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Redes sociais</div>${escHtml(p.redesSociais)||'—'}</div>
+      <div><div class="small-muted" style="font-weight:600;">Temperatura</div>${escHtml(p.temperatura)||'—'}</div>
+      ${ehLead? `<div><div class="small-muted" style="font-weight:600;">Origem</div>${escHtml(p.origem)||'—'}</div>` : ''}
+      ${ehLead? `<div><div class="small-muted" style="font-weight:600;">Data de entrada</div>${fmtDate(p.dataCriacao)}</div>` : ''}
+      ${ehLead? `<div><div class="small-muted" style="font-weight:600;">Próximo follow-up</div>${p.proximoFollowUp? fmtDate(p.proximoFollowUp):'—'}</div>` : ''}
+      ${ehLead? `<div><div class="small-muted" style="font-weight:600;">Valor estimado</div>${fmtBRL(p.valorEstimado)}</div>` : ''}
+      ${ehCliente? `<div><div class="small-muted" style="font-weight:600;">Produto</div>${escHtml(p.produto)||'—'}</div>` : ''}
+      ${ehCliente? `<div><div class="small-muted" style="font-weight:600;">Valor</div>${fmtBRL(p.valor)}</div>` : ''}
+      ${(ehCliente && p.valorRecebido!==undefined && Number(p.valorRecebido)!==Number(p.valor))? `<div><div class="small-muted" style="font-weight:600;">Já recebido</div>${fmtBRL(p.valorRecebido)} <span class="small-muted">(faltam ${fmtBRL(Number(p.valor)-Number(p.valorRecebido))})</span></div>` : ''}
+      ${ehCliente? `<div><div class="small-muted" style="font-weight:600;">Forma de pagamento</div>${escHtml(p.formaPagamento)||'—'}</div>` : ''}
+      ${ehCliente? `<div><div class="small-muted" style="font-weight:600;">Responsável</div>${escHtml(p.responsavel)||'—'}</div>` : ''}
+      ${ehCliente? `<div><div class="small-muted" style="font-weight:600;">Próx. reminder</div>${p.proximoReminder? fmtDate(p.proximoReminder)+' ('+escHtml(p.tipoReminder)+')':'—'}</div>` : ''}
     </div>
-    ${l.notas? `<div style="margin-top:14px;"><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Notas gerais</div><div style="font-size:13.5px;">${escHtml(l.notas)}</div></div>` : ''}
+    ${tagsHtml? `<div style="margin-top:10px;">${tagsHtml}</div>` : ''}
+    ${ehLead? `<div class="grid grid-2" style="margin-top:14px;">
+      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Dores</div><div style="font-size:13.5px;">${escHtml(p.dores)||'—'}</div></div>
+      <div><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Objetivos</div><div style="font-size:13.5px;">${escHtml(p.objetivos)||'—'}</div></div>
+    </div>` : ''}
+    ${p.notas? `<div style="margin-top:14px;"><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Notas gerais</div><div style="font-size:13.5px;">${escHtml(p.notas)}</div></div>` : ''}
+    ${(ehLead && !ehCliente)? `<div style="margin-top:14px;"><button class="btn gold xs" onclick="converterCliente('${p.id}')">Virar cliente</button></div>` : ''}
   </div>
-  ${renderHistoricoBloco('leads', l.id, l.historico)}`;
+  ${ehCliente? renderChecklistBloco('pessoas', p.id, p.checklist, 'Checklist de execução') : ''}
+  <div class="grid grid-3" style="margin-top:16px;align-items:start;">
+    <div class="card">
+      <div class="toolbar"><h3 class="section-title" style="margin:0;">Tarefas</h3><button class="btn ghost xs" onclick="addTarefaParaCliente('${p.id}')">+</button></div>
+      ${tarefasRel.length? tarefasRel.map(t=>`<div class="checklist-item ${t.status==='Concluído'?'done':''}"><span style="flex:1;">${escHtml(t.titulo)}</span><button class="btn ghost xs" onclick="abrirFichaTarefa('${t.id}')">Ver</button></div>`).join('') : emptyState('Nenhuma tarefa vinculada.')}
+    </div>
+    <div class="card">
+      <div class="toolbar"><h3 class="section-title" style="margin:0;">Agenda</h3><button class="btn ghost xs" onclick="addEventoParaCliente('${p.id}')">+</button></div>
+      ${eventosRel.length? eventosRel.map(e=>`<div class="checklist-item"><span style="flex:1;">${fmtDate(e.data)} — ${escHtml(e.titulo)}</span></div>`).join('') : emptyState('Nenhum compromisso vinculado.')}
+    </div>
+    <div class="card">
+      <h3 class="section-title">Financeiro</h3>
+      ${financeiroRel.length? financeiroRel.map(f=>`<div class="checklist-item"><span style="flex:1;">${fmtDate(f.data)} — ${escHtml(f.categoria)||f.tipo}</span><b>${fmtBRL(f.valor)}</b></div>`).join('') : emptyState('Nenhum lançamento vinculado.')}
+    </div>
+  </div>
+  ${renderHistoricoBloco('pessoas', p.id, p.historico)}`;
 }
+/* Pilar 3 — conversão automática: vira cliente SEM criar um segundo registro. Mesma pessoa, mesmo id, mesmo histórico — só ganha o papel "cliente" e os dados da venda por cima. */
 function converterCliente(id){
-  const l = state.crm.leads.find(x=>x.id===id);
+  const p = state.pessoas.find(x=>x.id===id);
+  const responsavelPadrao = getUsuarioAtual() || (state.gestao.equipe[0]? state.gestao.equipe[0].nome : 'Eu');
   openModal('Converter em cliente', [
     {key:'nome', label:'Nome', type:'text', required:true},
-    {key:'produto', label:'Produto contratado', type:'select', options: state.meta.produtos.map(p=>p.nome)},
+    {key:'produto', label:'Produto contratado', type:'select', options: state.meta.produtos.map(pr=>pr.nome)},
     {key:'valor', label:'Valor (R$)', type:'number'},
-    {key:'dataFechamento', label:'Data de fechamento', type:'date'}
-  ], {nome:l.nome, valor:l.valorEstimado, dataFechamento: todayStr()});
+    {key:'formaPagamento', label:'Forma de pagamento', type:'select', options:['Pix','Cartão de crédito','Boleto','Transferência','Outro']},
+    {key:'responsavel', label:'Responsável pelo atendimento', type:'select', options: state.gestao.equipe.length? state.gestao.equipe.map(e=>e.nome) : ['Eu']},
+    {key:'dataFechamento', label:'Data de fechamento', type:'date'},
+    {key:'observacoes', label:'Observações da venda', type:'textarea'}
+  ], {nome:p.nome, valor:p.valorEstimado, dataFechamento: todayStr(), responsavel: responsavelPadrao});
   modalOnSave = (data)=>{
-    l.convertido = true;
-    const novoCliente = {id:uid(), leadId:l.id, nome:data.nome, produto:data.produto, valor:Number(data.valor||0), dataFechamento:data.dataFechamento, status:'ativa', proximoReminder:addDays(data.dataFechamento,30), tipoReminder:'check-in', notas:'', checklist:checklistParaProduto(data.produto), historico:[{id:uid(), data:data.dataFechamento, tipo:'Mudança de status', nota:'Convertida a partir do lead "'+l.nome+'" — fechou o produto '+(data.produto||'')+'.', autor:getUsuarioAtual()||''}]};
-    state.clientes.push(novoCliente);
-    const responsavelPadrao = getUsuarioAtual() || (state.gestao.equipe[0]? state.gestao.equipe[0].nome : 'Eu');
+    if(!p.papeis.includes('cliente')) p.papeis.push('cliente');
+    Object.assign(p, {nome:data.nome, produto:data.produto, valor:Number(data.valor||0), valorRecebido:valorFinalRecebido(data), formaPagamento:data.formaPagamento, responsavel:data.responsavel, dataFechamento:data.dataFechamento, status:'ativa', proximoReminder:addDays(data.dataFechamento,30), tipoReminder:'check-in', checklist:checklistParaProduto(data.produto)});
+    if(!p.historico) p.historico = [];
+    const notaVenda = 'Fechou o produto '+(data.produto||'')+' — virou cliente. Pagamento: '+(data.formaPagamento||'—')+', responsável: '+(data.responsavel||'—')+'.'+(data.observacoes? ' Obs.: '+data.observacoes : '');
+    p.historico.push({id:uid(), data:data.dataFechamento, tipo:'Mudança de status', nota:notaVenda, autor:getUsuarioAtual()||''});
+    const responsavelTarefas = data.responsavel || responsavelPadrao;
     tarefasIniciaisParaProduto(data.produto).forEach(titulo=>{
-      state.gestao.tarefas.push({id:uid(), titulo, responsavel:responsavelPadrao, clienteId:novoCliente.id, categoria:'Atendimento', prioridade:'Alta', status:'A fazer', prazo:addDays(data.dataFechamento,3), historico:[], checklist:[]});
+      state.gestao.tarefas.push({id:uid(), titulo, responsavel:responsavelTarefas, clienteId:p.id, categoria:'Atendimento', prioridade:'Alta', status:'A fazer', prazo:addDays(data.dataFechamento,3), historico:[], checklist:[]});
     });
+    state.agenda.eventos.push({id:uid(), titulo:'Início do projeto — '+(data.produto||''), data:data.dataFechamento, tipo:'Atendimento', clienteId:p.id, local:'', observacoes:''});
     save();
     clientesView = 'checklist';
-    clientesChecklistId = novoCliente.id;
+    clientesChecklistId = p.id;
     setTab('clientes');
   };
 }
@@ -1261,11 +1666,11 @@ let clientesView = 'lista';
 let clientesChecklistId = null;
 function renderClientes(){
   if(clientesView==='checklist' && clientesChecklistId){
-    const c = state.clientes.find(x=>x.id===clientesChecklistId);
-    if(c) return renderChecklistCliente(c);
+    const c = state.pessoas.find(x=>x.id===clientesChecklistId);
+    if(c) return renderFichaPessoa(c, 'Voltar pra lista de clientes', 'fecharChecklist()');
     clientesView='lista'; clientesChecklistId=null;
   }
-  const list = state.clientes.filter(c=> clientesFilter==='todas' ? true : c.status===clientesFilter);
+  const list = getClientes().filter(c=> clientesFilter==='todas' ? true : c.status===clientesFilter);
   const rows = list.map(c=>{
     const rem = c.proximoReminder? daysDiff(c.proximoReminder): null;
     let remTag='—';
@@ -1273,27 +1678,35 @@ function renderClientes(){
     const checklist = c.checklist||[];
     const done = checklist.filter(i=>i.done).length;
     const progresso = checklist.length? `${done}/${checklist.length}` : '—';
-    return `<tr><td>${escHtml(c.nome)}</td><td>${escHtml(c.produto)}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${escHtml(c.status)}</span></td><td>${remTag}</td><td>${progresso}</td>
+    return `<tr><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(c.nome))}</span>${escHtml(c.nome)}</td><td>${escHtml(c.produto)}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${escHtml(c.status)}</span></td><td>${remTag}</td><td>${progresso}</td>
     <td><button class="btn ghost xs" onclick="abrirChecklist('${c.id}')">Ficha</button> <button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCliente('${c.id}')">Excluir</button></td></tr>`;
   }).join('');
   return `
   <div class="subtabs">
-    <div class="subtab ${clientesFilter==='todas'?'active':''}" onclick="setClientesFilter('todas')">Todas (${state.clientes.length})</div>
-    <div class="subtab ${clientesFilter==='ativa'?'active':''}" onclick="setClientesFilter('ativa')">Ativas (${state.clientes.filter(c=>c.status==='ativa').length})</div>
-    <div class="subtab ${clientesFilter==='finalizada'?'active':''}" onclick="setClientesFilter('finalizada')">Finalizadas (${state.clientes.filter(c=>c.status==='finalizada').length})</div>
+    <div class="subtab ${clientesFilter==='todas'?'active':''}" onclick="setClientesFilter('todas')">Todas (${getClientes().length})</div>
+    <div class="subtab ${clientesFilter==='ativa'?'active':''}" onclick="setClientesFilter('ativa')">Ativas (${getClientes().filter(c=>c.status==='ativa').length})</div>
+    <div class="subtab ${clientesFilter==='finalizada'?'active':''}" onclick="setClientesFilter('finalizada')">Finalizadas (${getClientes().filter(c=>c.status==='finalizada').length})</div>
   </div>
   <div class="note">Reminders sugeridos: check-in mensal durante o atendimento · pedir depoimento na entrega · reativação/upsell 90 dias após finalizada · aniversário (opcional). O checklist de execução é gerado automaticamente com base no produto contratado (etapas reais do Método ALMA®).</div>
   <div class="card">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Clientes</h3><button class="btn gold xs" onclick="addCliente()">+ Nova cliente</button></div>
-    ${list.length? `<table><thead><tr><th>Nome</th><th>Produto</th><th>Valor</th><th>Status</th><th>Próx. reminder</th><th>Checklist</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty-state">Nenhuma cliente aqui ainda.</div>'}
+    ${list.length? `<table><thead><tr><th>Nome</th><th>Produto</th><th>Valor</th><th>Status</th><th>Próx. reminder</th><th>Checklist</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:emptyState('Nenhuma cliente aqui ainda.', '<button class="btn gold xs" onclick="addCliente()">+ Nova cliente</button>')}
   </div>`;
 }
 function setClientesFilter(f){ clientesFilter=f; render(); }
+/* Se ela não mexer no campo "Já recebido", assume que recebeu tudo (venda à vista, o caso comum) — só passa a divergir quando ela mesma marcar um valor menor (parcelamento). */
+function valorFinalRecebido(data){
+  const valorNum = Number(data.valor||0);
+  return (data.valorRecebido!==undefined && data.valorRecebido!=='') ? Number(data.valorRecebido) : valorNum;
+}
 function clienteFields(){
   return [
     {key:'nome', label:'Nome', type:'text', required:true},
     {key:'produto', label:'Produto contratado', type:'select', options: state.meta.produtos.map(p=>p.nome)},
     {key:'valor', label:'Valor (R$)', type:'number'},
+    {key:'valorRecebido', label:'Já recebido (R$) — deixe igual ao Valor se foi à vista', type:'number'},
+    {key:'formaPagamento', label:'Forma de pagamento', type:'select', options:['Pix','Cartão de crédito','Boleto','Transferência','Outro']},
+    {key:'responsavel', label:'Responsável pelo atendimento', type:'select', options: state.gestao.equipe.length? state.gestao.equipe.map(e=>e.nome) : ['Eu']},
     {key:'dataFechamento', label:'Data de fechamento/início', type:'date'},
     {key:'status', label:'Status', type:'select', options:['ativa','finalizada']},
     {key:'tipoReminder', label:'Tipo de reminder', type:'select', options:['check-in','depoimento','reativação/upsell','aniversário']},
@@ -1303,28 +1716,48 @@ function clienteFields(){
 }
 function addCliente(){
   openModal('Nova cliente', clienteFields(), {status:'ativa', dataFechamento: todayStr()});
-  modalOnSave = (data)=>{ state.clientes.push(Object.assign({id:uid(), checklist:checklistParaProduto(data.produto), historico:[]}, data, {valor:Number(data.valor||0)})); save(); render(); };
+  modalOnSave = (data)=>{
+    const nova = Object.assign({id:uid(), papeis:['cliente'], checklist:checklistParaProduto(data.produto), historico:[]}, data, {valor:Number(data.valor||0), valorRecebido:valorFinalRecebido(data)});
+    nova.historico.push({id:uid(), data:nova.dataFechamento||todayStr(), tipo:'Mudança de status', nota:'Cliente cadastrada diretamente'+(nova.produto?' — produto '+nova.produto:'')+'.', autor:getUsuarioAtual()||''});
+    state.pessoas.push(nova); save(); render();
+  };
 }
 function editCliente(id){
-  const c = state.clientes.find(x=>x.id===id);
+  const c = getClientes().find(x=>x.id===id);
   const statusAntes = c.status;
   openModal('Editar cliente', clienteFields(), c);
   modalOnSave = (data)=>{
-    Object.assign(c, data, {valor:Number(data.valor||0)});
+    Object.assign(c, data, {valor:Number(data.valor||0), valorRecebido:valorFinalRecebido(data)});
     logMudancaStatus(c, 'Status', statusAntes, c.status);
     save(); render();
   };
 }
-function delCliente(id){ confirmarAcao('Excluir esta cliente?', ()=>{ state.clientes = state.clientes.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+function delCliente(id){
+  confirmarAcao('Excluir esta cliente?', ()=>{
+    const p = state.pessoas.find(x=>x.id===id);
+    if(p && p.papeis.length>1) p.papeis = p.papeis.filter(pp=>pp!=='cliente');
+    else state.pessoas = state.pessoas.filter(x=>x.id!==id);
+    save(); render();
+  }, {perigo:true, textoConfirmar:'Excluir'});
+}
 
 /* Checklist de execução do projeto contratado (etapas reais do Método ALMA®) */
-function abrirChecklist(id){ clientesChecklistId = id; clientesView = 'checklist'; setTab('clientes'); }
+function abrirChecklist(id){
+  const p = state.pessoas.find(x=>x.id===id);
+  if(p) registrarRecente('Cliente', id, p.nome, ()=>abrirChecklist(id));
+  clientesChecklistId = id; clientesView = 'checklist'; setTab('clientes');
+}
 function fecharChecklist(){ clientesView = 'lista'; clientesChecklistId = null; render(); }
 /* Checklist genérico — mesmo padrão do histórico, reaproveitado por clientes e tarefas */
 function toggleChecklistItem(colName, itemId, idx){
   const item = getColecao(colName).find(x=>x.id===itemId);
   if(!item.checklist) item.checklist = [];
-  item.checklist[idx].done = !item.checklist[idx].done;
+  const estavaConcluida = item.checklist[idx].done;
+  item.checklist[idx].done = !estavaConcluida;
+  if(!estavaConcluida){
+    if(!item.historico) item.historico = [];
+    item.historico.push({id:uid(), data:todayStr(), tipo:'Mudança de status', nota:'Etapa concluída: '+item.checklist[idx].step+'.', autor:getUsuarioAtual()||''});
+  }
   save(); render();
 }
 function addChecklistItem(colName, itemId){
@@ -1352,47 +1785,9 @@ function renderChecklistBloco(colName, itemId, checklist, titulo){
     <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
     <div class="small-muted" style="margin-top:6px;">${done}/${checklist.length} etapas concluídas (${pct}%)</div>
     <div style="margin-top:16px;">
-    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item ${item.done?'done':''}"><input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${colName}','${itemId}',${idx})"><span style="flex:1;">${escHtml(item.step)}</span><button class="btn ghost xs" onclick="delChecklistItem('${colName}','${itemId}',${idx})">Excluir</button></div>`).join('') : '<div class="empty-state">Sem etapas definidas ainda. Clique em "Adicionar etapa" para começar.</div>'}
+    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item ${item.done?'done':''}"><input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${colName}','${itemId}',${idx})"><span style="flex:1;">${escHtml(item.step)}</span><button class="btn ghost xs" onclick="delChecklistItem('${colName}','${itemId}',${idx})">Excluir</button></div>`).join('') : emptyState('Sem etapas definidas ainda.', `<button class="btn gold xs" onclick="addChecklistItem('${colName}','${itemId}')">+ Adicionar etapa</button>`)}
     </div>
   </div>`;
-}
-function irParaFichaLead(leadId){ abrirFicha(leadId); }
-function renderChecklistCliente(c){
-  const leadOrigem = c.leadId ? state.crm.leads.find(l=>l.id===c.leadId) : null;
-  const tarefasRel = state.gestao.tarefas.filter(t=>t.clienteId===c.id);
-  const eventosRel = state.agenda.eventos.filter(e=>e.clienteId===c.id).sort((a,b)=>a.data.localeCompare(b.data));
-  const financeiroRel = [
-    ...state.financeiro.entradas.filter(e=>e.clienteId===c.id).map(e=>({...e, tipo:'entrada'})),
-    ...state.financeiro.saidas.filter(e=>e.clienteId===c.id).map(e=>({...e, tipo:'saída'}))
-  ].sort((a,b)=>b.data.localeCompare(a.data));
-  return `
-  <div class="toolbar"><button class="btn ghost xs" onclick="fecharChecklist()">← Voltar pra lista de clientes</button></div>
-  <div class="card">
-    <div class="toolbar"><h3 class="section-title" style="margin:0;">${escHtml(c.nome)}</h3><button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar dados</button></div>
-    <div class="grid grid-4">
-      <div><div class="small-muted" style="font-weight:600;">Produto</div>${escHtml(c.produto)||'—'}</div>
-      <div><div class="small-muted" style="font-weight:600;">Valor</div>${fmtBRL(c.valor)}</div>
-      <div><div class="small-muted" style="font-weight:600;">Status</div><span class="tag status-${c.status}">${escHtml(c.status)}</span></div>
-      <div><div class="small-muted" style="font-weight:600;">Próx. reminder</div>${c.proximoReminder? fmtDate(c.proximoReminder)+' ('+escHtml(c.tipoReminder)+')':'—'}</div>
-    </div>
-    ${leadOrigem? `<div class="small-muted" style="margin-top:12px;">Veio do lead <a href="#" onclick="irParaFichaLead('${leadOrigem.id}');return false;" style="color:var(--gold);font-weight:600;">${escHtml(leadOrigem.nome)}</a> (origem: ${escHtml(leadOrigem.origem)||'—'})</div>` : ''}
-  </div>
-  ${renderChecklistBloco('clientes', c.id, c.checklist, 'Checklist de execução')}
-  <div class="grid grid-3" style="margin-top:16px;align-items:start;">
-    <div class="card">
-      <div class="toolbar"><h3 class="section-title" style="margin:0;">Tarefas</h3><button class="btn ghost xs" onclick="addTarefaParaCliente('${c.id}')">+</button></div>
-      ${tarefasRel.length? tarefasRel.map(t=>`<div class="checklist-item ${t.status==='Concluído'?'done':''}"><span style="flex:1;">${escHtml(t.titulo)}</span><button class="btn ghost xs" onclick="abrirFichaTarefa('${t.id}')">Ver</button></div>`).join('') : '<div class="empty-state">Nenhuma tarefa vinculada.</div>'}
-    </div>
-    <div class="card">
-      <div class="toolbar"><h3 class="section-title" style="margin:0;">Agenda</h3><button class="btn ghost xs" onclick="addEventoParaCliente('${c.id}')">+</button></div>
-      ${eventosRel.length? eventosRel.map(e=>`<div class="checklist-item"><span style="flex:1;">${fmtDate(e.data)} — ${escHtml(e.titulo)}</span></div>`).join('') : '<div class="empty-state">Nenhum compromisso vinculado.</div>'}
-    </div>
-    <div class="card">
-      <h3 class="section-title">Financeiro</h3>
-      ${financeiroRel.length? financeiroRel.map(f=>`<div class="checklist-item"><span style="flex:1;">${fmtDate(f.data)} — ${escHtml(f.categoria)||f.tipo}</span><b>${fmtBRL(f.valor)}</b></div>`).join('') : '<div class="empty-state">Nenhum lançamento extra vinculado (a venda em si já conta como receita).</div>'}
-    </div>
-  </div>
-  ${renderHistoricoBloco('clientes', c.id, c.historico)}`;
 }
 function addTarefaParaCliente(clienteId){ criarRegistro(state.gestao.tarefas, 'Nova tarefa', tarefaFields, {status:'A fazer', prioridade:'Média', clienteId}, {historico:[], checklist:[]}); }
 function addEventoParaCliente(clienteId){ criarRegistro(state.agenda.eventos, 'Novo evento', eventoFields, {data: todayStr(), clienteId}); }
@@ -1419,7 +1814,7 @@ function setAgendaView(v){ agendaView=v; render(); }
 function renderAgendaDia(){
   const evs = state.agenda.eventos.filter(e=>e.data===agendaRefDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
   return `<input type="date" value="${agendaRefDate}" onchange="agendaRefDate=this.value; render();" style="margin-bottom:12px;padding:7px;border:1px solid var(--border);border-radius:6px;">
-  ${evs.length? `<table><thead><tr><th>Hora</th><th>Título</th><th>Tipo</th><th></th></tr></thead><tbody>${evs.map(e=>`<tr><td>${e.hora||'—'}</td><td>${escHtml(e.titulo)}</td><td>${escHtml(e.tipo)}</td><td><button class="btn ghost xs" onclick="editEvento('${e.id}')">Editar</button> <button class="btn danger xs" onclick="delEvento('${e.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nada agendado nesse dia.</div>'}`;
+  ${evs.length? `<table><thead><tr><th>Hora</th><th>Título</th><th>Tipo</th><th></th></tr></thead><tbody>${evs.map(e=>`<tr><td>${e.hora||'—'}</td><td>${escHtml(e.titulo)}</td><td>${escHtml(e.tipo)}</td><td><button class="btn ghost xs" onclick="editEvento('${e.id}')">Editar</button> <button class="btn danger xs" onclick="delEvento('${e.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>` : emptyState('Nada agendado nesse dia.', '<button class="btn gold xs" onclick="addEvento()">+ Novo evento</button>')}`;
 }
 function renderAgendaSemana(){
   const base = new Date(agendaRefDate+'T00:00:00');
@@ -1463,7 +1858,7 @@ function renderAgendaAno(){
   return `<table><thead><tr><th>Mês</th><th>Eventos</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function eventoFields(){
-  return [{key:'titulo',label:'Título',type:'text',required:true},{key:'data',label:'Data',type:'date',required:true},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'select',options:['Atendimento','Diagnóstico','Conteúdo','Reunião estrategista','Pessoal','Outro']},{key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...state.clientes.map(c=>({value:c.id,label:c.nome}))]},{key:'local',label:'Local / link (Meet, endereço)',type:'text'},{key:'observacoes',label:'Observações',type:'textarea'}];
+  return [{key:'titulo',label:'Título',type:'text',required:true},{key:'data',label:'Data',type:'date',required:true},{key:'hora',label:'Hora',type:'time'},{key:'tipo',label:'Tipo',type:'select',options:['Atendimento','Diagnóstico','Conteúdo','Reunião estrategista','Pessoal','Outro']},{key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...getClientes().map(c=>({value:c.id,label:c.nome}))]},{key:'local',label:'Local / link (Meet, endereço)',type:'text'},{key:'observacoes',label:'Observações',type:'textarea'}];
 }
 function addEvento(){ criarRegistro(state.agenda.eventos, 'Novo evento', eventoFields, {data: agendaRefDate}); }
 function editEvento(id){ editarRegistro(state.agenda.eventos.find(x=>x.id===id), 'Editar evento', eventoFields); }
@@ -1501,7 +1896,7 @@ function renderUpdates(){
   <div class="note phase2">Automação total (buscar sozinho na internet todos os dias) está planejada para a Fase 2, com rotina agendada + banco de dados na nuvem. Por enquanto, registre aqui manualmente (ou peça pro Claude pesquisar e preencher pra você) as pautas quentes, novidades de IA/automação, ideias de conteúdo e reports de mercado do dia.</div>
   <div class="card">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Updates registrados</h3><button class="btn gold xs" onclick="addUpdate()">+ Novo update</button></div>
-    ${entradas.length? entradas.map(u=>`<div class="script-card"><h4>${fmtDate(u.data)} — ${escHtml(u.tag)||'Geral'}</h4><pre>${escHtml(u.conteudo)}</pre><button class="btn danger xs" onclick="delUpdate('${u.id}')">Excluir</button></div>`).join('') : '<div class="empty-state">Nenhum update registrado ainda.</div>'}
+    ${entradas.length? entradas.map(u=>`<div class="script-card"><h4>${fmtDate(u.data)} — ${escHtml(u.tag)||'Geral'}</h4><pre>${escHtml(u.conteudo)}</pre><button class="btn danger xs" onclick="delUpdate('${u.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum update registrado ainda.', '<button class="btn gold xs" onclick="addUpdate()">+ Novo update</button>')}
   </div>`;
 }
 function addUpdate(){
@@ -1562,7 +1957,7 @@ function anosDisponiveisFinanceiro(){
   const anos = new Set([todayStr().slice(0,4)]);
   state.financeiro.entradas.forEach(e=>{ if(e.data) anos.add(e.data.slice(0,4)); });
   state.financeiro.saidas.forEach(e=>{ if(e.data) anos.add(e.data.slice(0,4)); });
-  state.clientes.forEach(c=>{ if(c.dataFechamento) anos.add(c.dataFechamento.slice(0,4)); });
+  getClientes().forEach(c=>{ if(c.dataFechamento) anos.add(c.dataFechamento.slice(0,4)); });
   return Array.from(anos).sort();
 }
 function dataNoFiltroFinanceiro(dataStr){
@@ -1580,7 +1975,7 @@ function setFiltroFinanceiro(tipo, valor){
 function renderFinanceiro(){
   const entradasF = state.financeiro.entradas.filter(e=>dataNoFiltroFinanceiro(e.data));
   const saidasF = state.financeiro.saidas.filter(e=>dataNoFiltroFinanceiro(e.data));
-  const clientesF = state.clientes.filter(c=>dataNoFiltroFinanceiro(c.dataFechamento));
+  const clientesF = getClientes().filter(c=>dataNoFiltroFinanceiro(c.dataFechamento));
   const entradas = entradasF.reduce((a,e)=>a+Number(e.valor||0),0) + clientesF.reduce((a,c)=>a+Number(c.valor||0),0);
   const saidas = saidasF.reduce((a,e)=>a+Number(e.valor||0),0);
   const lucro = entradas - saidas;
@@ -1605,10 +2000,10 @@ function renderFinanceiro(){
   return `
   ${filtroUI}
   <div class="grid grid-4">
+    <div class="card kpi hero"><div class="label">Lucro líquido no período</div><div class="value">${fmtBRL(lucro)}</div><div class="sub">margem de ${margem}%</div></div>
     <div class="card kpi"><div class="label">Receita no período</div><div class="value">${fmtBRL(entradas)}</div></div>
     <div class="card kpi"><div class="label">Despesas no período</div><div class="value">${fmtBRL(saidas)}</div></div>
-    <div class="card kpi"><div class="label">Lucro líquido</div><div class="value">${fmtBRL(lucro)}</div></div>
-    <div class="card kpi"><div class="label">Margem líquida</div><div class="value">${margem}%</div></div>
+    <div class="card kpi"><div class="label">Margem líquida</div><div class="value">${margem}%</div><div class="progress-wrap"><div class="progress-bar" style="width:${Math.max(0,Math.min(100,margem))}%"></div></div></div>
   </div>
   <div class="subtabs" style="margin-top:16px;">${subtabs.map(([k,l])=>`<div class="subtab ${financeiroSubtab===k?'active':''}" onclick="setFinSubtab('${k}')">${l}</div>`).join('')}</div>
   <div class="card">${body}</div>`;
@@ -1618,14 +2013,14 @@ function renderFluxoCaixa(){
   const mov = [
     ...state.financeiro.entradas.map(e=>({...e, tipo:'entrada'})),
     ...state.financeiro.saidas.map(e=>({...e, tipo:'saída'})),
-    ...state.clientes.map(c=>({id:c.id, data:c.dataFechamento, valor:c.valor, categoria:'Venda: '+(c.produto||''), tipo:'entrada', origemCliente:true}))
+    ...getClientes().map(c=>({id:c.id, data:c.dataFechamento, valor:c.valor, categoria:'Venda: '+(c.produto||''), tipo:'entrada', origemCliente:true}))
   ].filter(m=>m.data && dataNoFiltroFinanceiro(m.data)).sort((a,b)=>b.data.localeCompare(a.data));
   return `<div class="toolbar"><button class="btn gold xs" onclick="addMovimento('entrada')">+ Entrada</button><button class="btn ghost xs" onclick="addMovimento('saida')">+ Saída</button></div>
-  ${mov.length? `<table><thead><tr><th>Data</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${mov.map(m=>`<tr><td>${fmtDate(m.data)}</td><td>${escHtml(m.categoria)}</td><td>${m.tipo}</td><td>${fmtBRL(m.valor)}</td><td>${m.origemCliente?'<span class="small-muted">via Clientes</span>':`<button class="btn danger xs" onclick="delMovimento('${m.tipo==='entrada'?'entradas':'saidas'}','${m.id}')">Excluir</button>`}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhum lançamento nesse período.</div>'}`;
+  ${mov.length? `<table><thead><tr><th>Data</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${mov.map(m=>`<tr><td>${fmtDate(m.data)}</td><td>${escHtml(m.categoria)}</td><td>${m.tipo}</td><td>${fmtBRL(m.valor)}</td><td>${m.origemCliente?'<span class="small-muted">via Clientes</span>':`<button class="btn danger xs" onclick="delMovimento('${m.tipo==='entrada'?'entradas':'saidas'}','${m.id}')">Excluir</button>`}</td></tr>`).join('')}</tbody></table>` : emptyState('Nenhum lançamento nesse período.')}`;
 }
 function addMovimento(tipo){
   const cats = tipo==='entrada' ? ['Venda avulsa','Outro'] : [...state.financeiro.categoriasFixas, ...state.financeiro.categoriasVariaveis].map(c=>c.nome);
-  openModal('Novo lançamento — '+tipo, [{key:'data',label:'Data',type:'date',required:true},{key:'categoria',label:'Categoria',type:'select',options:cats},{key:'valor',label:'Valor (R$)',type:'number',required:true},{key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...state.clientes.map(c=>({value:c.id,label:c.nome}))]}], {data:todayStr()});
+  openModal('Novo lançamento — '+tipo, [{key:'data',label:'Data',type:'date',required:true},{key:'categoria',label:'Categoria',type:'select',options:cats},{key:'valor',label:'Valor (R$)',type:'number',required:true},{key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...getClientes().map(c=>({value:c.id,label:c.nome}))]}], {data:todayStr()});
   modalOnSave=(data)=>{ const arr = tipo==='entrada'? state.financeiro.entradas : state.financeiro.saidas; arr.push(Object.assign({id:uid()},data,{valor:Number(data.valor)})); save(); render(); };
 }
 function delMovimento(arrName,id){ confirmarAcao('Excluir lançamento?', ()=>{ state.financeiro[arrName] = state.financeiro[arrName].filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
@@ -1664,7 +2059,11 @@ let gestaoView = 'lista';
 let gestaoFichaTarefaId = null;
 let gestaoDisplayMode = 'tabela';
 function setGestaoDisplayMode(m){ gestaoDisplayMode = m; render(); }
-function abrirFichaTarefa(id){ gestaoFichaTarefaId = id; gestaoView = 'ficha'; setTab('gestao'); }
+function abrirFichaTarefa(id){
+  const t = state.gestao.tarefas.find(x=>x.id===id);
+  if(t) registrarRecente('Tarefa', id, t.titulo, ()=>abrirFichaTarefa(id));
+  gestaoFichaTarefaId = id; gestaoView = 'ficha'; setTab('gestao');
+}
 function fecharFichaTarefa(){ gestaoView = 'lista'; gestaoFichaTarefaId = null; render(); }
 function renderGestao(){
   if(gestaoView==='ficha' && gestaoFichaTarefaId){
@@ -1673,7 +2072,7 @@ function renderGestao(){
     gestaoView='lista'; gestaoFichaTarefaId=null;
   }
   const tarefas = state.gestao.tarefas;
-  const nomeCliente = id => { const c = state.clientes.find(x=>x.id===id); return c? c.nome : '—'; };
+  const nomeCliente = id => { const c = getClientes().find(x=>x.id===id); return c? c.nome : '—'; };
   const statusColunas = ['A fazer','Em andamento','Concluído'];
   return `
   <div class="card">
@@ -1685,20 +2084,20 @@ function renderGestao(){
       </div>
       <button class="btn gold xs" onclick="addTarefa()">+ Tarefa</button>
     </div>
-    ${gestaoDisplayMode==='kanban' ? renderKanban(statusColunas, tarefas, 'status', 'tarefas') : (tarefas.length? `<table><thead><tr><th>Tarefa</th><th>Responsável</th><th>Cliente</th><th>Prioridade</th><th>Status</th><th>Prazo</th><th></th></tr></thead><tbody>${tarefas.map(t=>`<tr><td>${escHtml(t.titulo)}</td><td>${escHtml(t.responsavel)}</td><td>${t.clienteId? escHtml(nomeCliente(t.clienteId)):'—'}</td><td>${escHtml(t.prioridade)||'—'}</td><td><span class="tag ${t.status==='Concluído'?'status-finalizada':'status-ativa'}">${escHtml(t.status)}</span></td><td>${fmtDate(t.prazo)}</td><td><button class="btn ghost xs" onclick="abrirFichaTarefa('${t.id}')">Ficha</button> <button class="btn ghost xs" onclick="editTarefa('${t.id}')">Editar</button> <button class="btn danger xs" onclick="delTarefa('${t.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">Nenhuma tarefa registrada.</div>')}
+    ${gestaoDisplayMode==='kanban' ? renderKanban(statusColunas, tarefas, 'status', 'tarefas') : (tarefas.length? `<table><thead><tr><th>Tarefa</th><th>Responsável</th><th>Cliente</th><th>Prioridade</th><th>Status</th><th>Prazo</th><th></th></tr></thead><tbody>${tarefas.map(t=>`<tr><td>${escHtml(t.titulo)}</td><td>${escHtml(t.responsavel)}</td><td>${t.clienteId? escHtml(nomeCliente(t.clienteId)):'—'}</td><td>${escHtml(t.prioridade)||'—'}</td><td><span class="tag ${t.status==='Concluído'?'status-finalizada':'status-ativa'}">${escHtml(t.status)}</span></td><td>${fmtDate(t.prazo)}</td><td><button class="btn ghost xs" onclick="abrirFichaTarefa('${t.id}')">Ficha</button> <button class="btn ghost xs" onclick="editTarefa('${t.id}')">Editar</button> <button class="btn danger xs" onclick="delTarefa('${t.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:emptyState('Nenhuma tarefa registrada.', '<button class="btn gold xs" onclick="addTarefa()">+ Tarefa</button>'))}
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Reuniões com a estrategista</h3><button class="btn gold xs" onclick="addReuniao()">+ Reunião</button></div>
-    ${state.gestao.reunioes.length? state.gestao.reunioes.map(r=>`<div class="script-card"><h4>${fmtDate(r.data)}</h4><pre>${escHtml(r.pauta)}</pre><button class="btn danger xs" onclick="delReuniao('${r.id}')">Excluir</button></div>`).join(''):'<div class="empty-state">Nenhuma reunião registrada.</div>'}
+    ${state.gestao.reunioes.length? state.gestao.reunioes.map(r=>`<div class="script-card"><h4>${fmtDate(r.data)}</h4><pre>${escHtml(r.pauta)}</pre><button class="btn danger xs" onclick="delReuniao('${r.id}')">Excluir</button></div>`).join(''):emptyState('Nenhuma reunião registrada.', '<button class="btn gold xs" onclick="addReuniao()">+ Reunião</button>')}
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Equipe</h3><button class="btn gold xs" onclick="addEquipe()">+ Pessoa</button></div>
     <div class="note">Cadastre aqui você e sua equipe (estrategista, secretária, social seller, assistente). Isso alimenta o seletor "Quem é você?" no topo da tela e a lista de responsáveis das tarefas — sem precisar de login.</div>
-    ${state.gestao.equipe.length? state.gestao.equipe.map(e=>`<div class="checklist-item"><span style="flex:1;">${escHtml(e.nome)}</span><span class="small-muted" style="margin-right:10px;">${escHtml(e.perfil)}</span><button class="btn ghost xs" onclick="editEquipe('${e.id}')">Editar</button> <button class="btn ghost xs" onclick="delEquipe('${e.id}')">Excluir</button></div>`).join(''):'<div class="empty-state">Ninguém cadastrado ainda.</div>'}
+    ${state.gestao.equipe.length? state.gestao.equipe.map(e=>`<div class="checklist-item"><span style="flex:1;">${escHtml(e.nome)}</span><span class="small-muted" style="margin-right:10px;">${escHtml(e.perfil)}</span><button class="btn ghost xs" onclick="editEquipe('${e.id}')">Editar</button> <button class="btn ghost xs" onclick="delEquipe('${e.id}')">Excluir</button></div>`).join(''):emptyState('Ninguém cadastrado ainda.', '<button class="btn gold xs" onclick="addEquipe()">+ Pessoa</button>')}
   </div>`;
 }
 function renderFichaTarefa(t){
-  const cliente = t.clienteId ? state.clientes.find(c=>c.id===t.clienteId) : null;
+  const cliente = t.clienteId ? getClientes().find(c=>c.id===t.clienteId) : null;
   return `
   <div class="toolbar"><button class="btn ghost xs" onclick="fecharFichaTarefa()">← Voltar pra tarefas</button></div>
   <div class="card">
@@ -1719,7 +2118,7 @@ function tarefaFields(){
   return [
     {key:'titulo',label:'Tarefa',type:'text',required:true},
     {key:'responsavel',label:'Responsável',type:'select',options: state.gestao.equipe.length? state.gestao.equipe.map(e=>e.nome) : ['Eu']},
-    {key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...state.clientes.map(c=>({value:c.id,label:c.nome}))]},
+    {key:'clienteId',label:'Cliente relacionado (opcional)',type:'select',options:[{value:'',label:'— nenhum —'}, ...getClientes().map(c=>({value:c.id,label:c.nome}))]},
     {key:'categoria',label:'Categoria',type:'select',options:['Atendimento','Conteúdo','Financeiro','Comercial/CRM','Administrativo','Outro']},
     {key:'prioridade',label:'Prioridade',type:'select',options:['Alta','Média','Baixa']},
     {key:'status',label:'Status',type:'select',options:['A fazer','Em andamento','Concluído']},
@@ -1746,7 +2145,7 @@ function renderTrafego(){
       const cpl = c.leads>0? Number(c.investimento)/Number(c.leads):0;
       const cac = c.vendas>0? Number(c.investimento)/Number(c.vendas):0;
       return `<tr><td>${escHtml(c.plataforma)}</td><td>${escHtml(c.nome)}</td><td>${fmtBRL(c.investimento)}</td><td>${c.leads}</td><td>${fmtBRL(cpl)}</td><td>${c.vendas}</td><td>${fmtBRL(cac)}</td><td><button class="btn ghost xs" onclick="editCampanha('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCampanha('${c.id}')">Excluir</button></td></tr>`;
-    }).join('')}</tbody></table>` : '<div class="empty-state">Nenhuma campanha cadastrada ainda — sem orçamento definido no momento, estrutura pronta para quando começar.</div>'}
+    }).join('')}</tbody></table>` : emptyState('Nenhuma campanha cadastrada ainda — sem orçamento definido no momento, estrutura pronta para quando começar.', '<button class="btn gold xs" onclick="addCampanha()">+ Campanha</button>')}
   </div>`;
 }
 function campanhaFields(){ return [{key:'plataforma',label:'Plataforma',type:'select',options:['Meta Ads','Google Ads','TikTok Ads']},{key:'nome',label:'Nome da campanha',type:'text',required:true},{key:'investimento',label:'Investimento (R$)',type:'number'},{key:'leads',label:'Leads gerados',type:'number'},{key:'vendas',label:'Vendas geradas',type:'number'},{key:'observacoes',label:'Observações',type:'textarea'}]; }
@@ -1761,7 +2160,7 @@ function renderConteudo(){
   <div class="note">Pilares de conteúdo sugeridos: ${state.conteudo.pilares.join(' · ')}. Priorize acompanhar <b>salvamentos</b> e <b>compartilhamentos</b> — são os sinais mais fortes de valor percebido pelo algoritmo hoje.</div>
   <div class="card">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Posts registrados</h3><button class="btn gold xs" onclick="addPost()">+ Post</button></div>
-    ${posts.length? `<table><thead><tr><th>Data</th><th>Plataforma</th><th>Formato</th><th>Pilar</th><th>Alcance</th><th>Salvos</th><th>Compart.</th><th>Comentários</th><th>Cliques link</th><th></th></tr></thead><tbody>${posts.map(p=>`<tr><td>${fmtDate(p.data)}</td><td>${p.plataforma}</td><td>${p.formato}</td><td>${p.pilar||''}</td><td>${p.alcance||0}</td><td>${p.salvamentos||0}</td><td>${p.compartilhamentos||0}</td><td>${p.comentarios||0}</td><td>${p.cliques||0}</td><td><button class="btn ghost xs" onclick="editPost('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delPost('${p.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">Nenhum post registrado ainda.</div>'}
+    ${posts.length? `<table><thead><tr><th>Data</th><th>Plataforma</th><th>Formato</th><th>Pilar</th><th>Alcance</th><th>Salvos</th><th>Compart.</th><th>Comentários</th><th>Cliques link</th><th></th></tr></thead><tbody>${posts.map(p=>`<tr><td>${fmtDate(p.data)}</td><td>${p.plataforma}</td><td>${p.formato}</td><td>${p.pilar||''}</td><td>${p.alcance||0}</td><td>${p.salvamentos||0}</td><td>${p.compartilhamentos||0}</td><td>${p.comentarios||0}</td><td>${p.cliques||0}</td><td><button class="btn ghost xs" onclick="editPost('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delPost('${p.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:emptyState('Nenhum post registrado ainda.', '<button class="btn gold xs" onclick="addPost()">+ Post</button>')}
   </div>`;
 }
 function postFields(){ return [
