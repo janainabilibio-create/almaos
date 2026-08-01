@@ -109,6 +109,14 @@
   .fc-sub{font-size:11px;color:#cfc9bd;margin-top:2px;}
   .fc-divisor{padding:7px 18px;background:var(--nude);color:var(--text-muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-align:center;}
 
+  /* Próxima Ação Recomendada — "nunca deixar o usuário pensar", primeira coisa visível ao abrir a ficha */
+  .proxima-acao{background:var(--black);border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .proxima-acao.neutro{background:var(--charcoal-2);}
+  .proxima-acao.atraso{background:#4a2420;}
+  .proxima-acao .rotulo{font-size:10.5px;color:var(--gold-light);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:4px;}
+  .proxima-acao .texto{font-size:17px;color:var(--white);font-weight:700;}
+  .proxima-acao .pa-data{font-size:12px;color:#cfc9bd;margin-top:3px;}
+
   h3.section-title{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin:0 0 12px;font-weight:700;}
 
   table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -440,6 +448,83 @@ function defaultState(){
   };
 }
 
+/* ===================== FINANÇAS PESSOAIS (isolado do state principal, de propósito) =====================
+   Guardado numa chave de localStorage totalmente separada de STORAGE_KEY. NUNCA passa por save()/pushToCloudDebounced() —
+   por isso nunca sincroniza pra nuvem, mesmo com a sincronização ativa pro resto do sistema. Travado por PIN local,
+   que é uma proteção de privacidade prática (não deixa visível se alguém pegar seu notebook), não segurança de
+   verdade contra alguém tecnicamente capaz — isso só existiria com login real (Firebase Authentication), que é
+   um projeto à parte, decisão dela de não fazer agora. */
+const FINANCAS_PESSOAIS_KEY = 'alma_os_financas_pessoais';
+function defaultFinancasPessoais(){
+  return {
+    pin: null,
+    entradas: [], saidas: [],
+    categoriasFixas: ['Moradia','Alimentação','Transporte','Saúde','Educação'].map(nome=>({id:uid(), nome})),
+    categoriasVariaveis: ['Lazer','Compras','Viagem','Presentes','Outros'].map(nome=>({id:uid(), nome})),
+    bancos: [], cartoes: [], parcelamentos: []
+  };
+}
+function loadFinancasPessoais(){
+  try{
+    const raw = localStorage.getItem(FINANCAS_PESSOAIS_KEY);
+    if(raw) return Object.assign(defaultFinancasPessoais(), JSON.parse(raw));
+  }catch(e){ console.error('Falha ao carregar finanças pessoais', e); }
+  return defaultFinancasPessoais();
+}
+let financasPessoais = loadFinancasPessoais();
+function saveFinancasPessoais(){ localStorage.setItem(FINANCAS_PESSOAIS_KEY, JSON.stringify(financasPessoais)); }
+let financasPessoaisDestrancada = false;
+function hashSimples(txt){
+  let hash = 0;
+  const s = String(txt);
+  for(let i=0;i<s.length;i++){ hash = ((hash<<5)-hash+s.charCodeAt(i))|0; }
+  return String(hash);
+}
+function configurarPinFinancas(){
+  openModal('Criar PIN de acesso', [
+    {key:'pin', label:'Escolha um PIN (mín. 4 dígitos)', type:'password', required:true},
+    {key:'pinConfirma', label:'Confirme o PIN', type:'password', required:true}
+  ]);
+  modalOnSave = (data)=>{
+    if(!data.pin || data.pin.length<4){ mostrarToast('PIN precisa ter pelo menos 4 dígitos.', 'erro'); return; }
+    if(data.pin !== data.pinConfirma){ mostrarToast('Os PINs não coincidem.', 'erro'); return; }
+    financasPessoais.pin = hashSimples(data.pin);
+    saveFinancasPessoais();
+    financasPessoaisDestrancada = true;
+    mostrarToast('PIN criado.');
+    render();
+  };
+}
+function trocarPinFinancas(){
+  openModal('Trocar PIN de acesso', [
+    {key:'pin', label:'Novo PIN (mín. 4 dígitos)', type:'password', required:true},
+    {key:'pinConfirma', label:'Confirme o novo PIN', type:'password', required:true}
+  ]);
+  modalOnSave = (data)=>{
+    if(!data.pin || data.pin.length<4){ mostrarToast('PIN precisa ter pelo menos 4 dígitos.', 'erro'); return; }
+    if(data.pin !== data.pinConfirma){ mostrarToast('Os PINs não coincidem.', 'erro'); return; }
+    financasPessoais.pin = hashSimples(data.pin);
+    saveFinancasPessoais();
+    mostrarToast('PIN atualizado.');
+    render();
+  };
+}
+function entrarComPinFinancas(){
+  openModal('Digite seu PIN', [{key:'pin', label:'PIN', type:'password', required:true}]);
+  modalOnSave = (data)=>{
+    if(hashSimples(data.pin) === financasPessoais.pin){ financasPessoaisDestrancada = true; render(); }
+    else mostrarToast('PIN incorreto.', 'erro');
+  };
+}
+function trancarFinancas(){ financasPessoaisDestrancada = false; render(); }
+function resetarPinFinancas(){
+  confirmarAcao('Isso remove a trava de PIN (os lançamentos continuam salvos). Você vai poder criar um PIN novo em seguida. Continuar?', ()=>{
+    financasPessoais.pin = null;
+    financasPessoaisDestrancada = false;
+    saveFinancasPessoais(); render();
+  }, {perigo:true, textoConfirmar:'Remover PIN'});
+}
+
 let state = loadState();
 function loadState(){
   try{
@@ -753,6 +838,7 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 const TABS = [
   {id:'dashboard', label:'Dashboard', grupo:'Visão Geral'},
   {id:'metas', label:'Metas & Números', grupo:'Visão Geral'},
+  {id:'analytics', label:'Analytics', grupo:'Visão Geral'},
   {id:'crm', label:'CRM', grupo:'Vendas'},
   {id:'clientes', label:'Clientes', grupo:'Vendas'},
   {id:'agenda', label:'Agenda', grupo:'Operação'},
@@ -764,6 +850,7 @@ const TABS = [
   {id:'trafego', label:'Tráfego Pago', grupo:'Conteúdo & Marketing'},
   {id:'conteudo', label:'Métricas de Conteúdo', grupo:'Conteúdo & Marketing'},
   {id:'financeiro', label:'Financeiro', grupo:'Financeiro'},
+  {id:'financaspessoais', label:'🔒 Finanças Pessoais', grupo:'Financeiro', restrito:true},
   {id:'nuvem', label:'Nuvem (Fase 2)', grupo:'Sistema', restrito:true},
   {id:'config', label:'Backup & Config', grupo:'Sistema', restrito:true}
 ];
@@ -784,6 +871,7 @@ function renderNav(){
 function setTab(id){
   const alvo = TABS.find(t=>t.id===id);
   if(alvo && alvo.restrito && !podeVerAreaRestrita()) id = 'dashboard';
+  if(activeTab==='financaspessoais' && id!=='financaspessoais') financasPessoaisDestrancada = false;
   activeTab = id; document.getElementById('page-title').textContent = TABS.find(t=>t.id===id).label; renderNav(); render();
 }
 
@@ -860,7 +948,7 @@ function mostrarToast(mensagem, tipo){
 function render(){
   const c = document.getElementById('content');
   document.getElementById('today-label').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
-  const renderers = {dashboard:renderDashboard, metas:renderMetas, crm:renderCRM, clientes:renderClientes, agenda:renderAgenda, rotina:renderRotina, updates:renderUpdates, base:renderBase, scripts:renderScripts, financeiro:renderFinanceiro, gestao:renderGestao, trafego:renderTrafego, conteudo:renderConteudo, nuvem:renderNuvem, config:renderConfig};
+  const renderers = {dashboard:renderDashboard, metas:renderMetas, analytics:renderAnalytics, crm:renderCRM, clientes:renderClientes, agenda:renderAgenda, rotina:renderRotina, updates:renderUpdates, base:renderBase, scripts:renderScripts, financeiro:renderFinanceiro, financaspessoais:renderFinancasPessoais, gestao:renderGestao, trafego:renderTrafego, conteudo:renderConteudo, nuvem:renderNuvem, config:renderConfig};
   c.innerHTML = renderers[activeTab]();
   updateNotifBadge();
   c.classList.remove('fade-in');
@@ -1008,6 +1096,68 @@ function gerarInsights(){
 
   return insights;
 }
+/* Analytics — cruzamentos reais entre CRM, Clientes, Conteúdo e Scripts. Tudo calculado sobre dado que já existe (sem inventar correlação nem IA). */
+function conversaoPorOrigem(){
+  const stats = {};
+  getLeads().forEach(l=>{ const o=l.origem||'Não informado'; if(!stats[o]) stats[o]={total:0,ganhos:0,perdidos:0}; stats[o].total++; if(isLeadGanho(l)) stats[o].ganhos++; if(isLeadPerdido(l)) stats[o].perdidos++; });
+  return Object.entries(stats).map(([origem,v])=>({origem, total:v.total, ganhos:v.ganhos, perdidos:v.perdidos, taxa: v.total? Math.round(v.ganhos/v.total*100):0})).sort((a,b)=>b.taxa-a.taxa);
+}
+/* "Estágio que mais perde clientes": lê as transições automáticas do histórico (logMudancaStatus) e conta de qual estágio a lead estava vindo quando virou Perdido — não é o estágio final, é o último estágio real antes de perder. */
+function etapaQuePerdeMais(){
+  const contagem = {};
+  getLeads().forEach(l=>{
+    if(!isLeadPerdido(l)) return;
+    const transicoes = (l.historico||[]).filter(h=>/^Estágio alterado de/.test(h.nota||'')).sort((a,b)=>a.data.localeCompare(b.data));
+    for(let i=transicoes.length-1;i>=0;i--){
+      const m = transicoes[i].nota.match(/^Estágio alterado de "(.+)" para "(.+)"$/);
+      if(m && m[2].startsWith('Perdido')){ contagem[m[1]] = (contagem[m[1]]||0)+1; break; }
+    }
+  });
+  return Object.entries(contagem).map(([etapa,n])=>({etapa,n})).sort((a,b)=>b.n-a.n);
+}
+function tempoFechamentoPorProduto(){
+  const porProduto = {};
+  getClientes().forEach(c=>{
+    if(c.papeis.includes('lead') && c.dataCriacao && c.dataFechamento && c.produto){
+      const dias = Math.round((new Date(c.dataFechamento+'T00:00:00') - new Date(c.dataCriacao+'T00:00:00'))/86400000);
+      if(dias>=0){ if(!porProduto[c.produto]) porProduto[c.produto]=[]; porProduto[c.produto].push(dias); }
+    }
+  });
+  return Object.entries(porProduto).map(([produto,dias])=>({produto, media: Math.round(dias.reduce((a,b)=>a+b,0)/dias.length), amostra:dias.length})).sort((a,b)=>a.media-b.media);
+}
+function cidadesRanking(){
+  const porCidade = {};
+  getClientes().forEach(c=>{ if(c.cidade){ if(!porCidade[c.cidade]) porCidade[c.cidade]={vendas:0,faturamento:0}; porCidade[c.cidade].vendas++; porCidade[c.cidade].faturamento+=Number(c.valor||0); } });
+  return Object.entries(porCidade).map(([cidade,v])=>({cidade, vendas:v.vendas, faturamento:v.faturamento})).sort((a,b)=>b.faturamento-a.faturamento);
+}
+function profissoesQueMaisCompram(){
+  const porProfissao = {};
+  getClientes().forEach(c=>{ if(c.profissao){ if(!porProfissao[c.profissao]) porProfissao[c.profissao]={vendas:0,faturamento:0}; porProfissao[c.profissao].vendas++; porProfissao[c.profissao].faturamento+=Number(c.valor||0); } });
+  return Object.entries(porProfissao).map(([profissao,v])=>({profissao, vendas:v.vendas, faturamento:v.faturamento})).sort((a,b)=>b.faturamento-a.faturamento);
+}
+function profissoesQueMaisIndicam(){
+  const porProfissao = {};
+  getLeads().filter(l=>l.origem==='Indicação' && l.profissao).forEach(l=>{ porProfissao[l.profissao] = (porProfissao[l.profissao]||0)+1; });
+  return Object.entries(porProfissao).map(([profissao,n])=>({profissao,n})).sort((a,b)=>b.n-a.n);
+}
+function postsQueMaisVendem(){
+  const porPost = {};
+  getClientes().forEach(c=>{
+    if(!c.postOrigem) return;
+    const post = state.conteudo.posts.find(p=>p.id===c.postOrigem);
+    const label = post ? (fmtDate(post.data)+' — '+post.plataforma+' '+post.formato+(post.pilar?' ('+post.pilar+')':'')) : 'Post removido';
+    if(!porPost[label]) porPost[label]={vendas:0,faturamento:0};
+    porPost[label].vendas++; porPost[label].faturamento+=Number(c.valor||0);
+  });
+  return Object.entries(porPost).map(([post,v])=>({post, vendas:v.vendas, faturamento:v.faturamento})).sort((a,b)=>b.faturamento-a.faturamento);
+}
+function scriptsQueMaisFecham(){
+  const porScript = {};
+  getClientes().forEach(c=>{
+    (c.historico||[]).forEach(h=>{ if(h.scriptUsado){ porScript[h.scriptUsado] = (porScript[h.scriptUsado]||0)+1; } });
+  });
+  return Object.entries(porScript).map(([script,n])=>({script,n})).sort((a,b)=>b.n-a.n);
+}
 /* Pilar 21 — reconhece a etapa real do Método ALMA em que cada cliente ativa está (primeira etapa do checklist ainda não concluída), não um status genérico. */
 function clientesPorEtapaMetodo(){
   const porEtapa = {};
@@ -1019,6 +1169,116 @@ function clientesPorEtapaMetodo(){
     porEtapa[etapa] = (porEtapa[etapa]||0) + 1;
   });
   return porEtapa;
+}
+/* Próxima Ação Recomendada — "nunca deixar o usuário pensar". Motor de regras reaproveitando o que já existe: estágio do CRM pra lead, etapa real do checklist do Método ALMA pra cliente. Sem IA, 100% determinístico e explicável. */
+/* CRM Inteligente — mesmo princípio de sempre: heurística explicável, não IA prevendo (decisão já tomada). Probabilidade vem do estágio real do funil + temperatura; custo/ROI só existem quando há tráfego pago de verdade por trás; LTV soma o valor atual + o upgrade real do Método ALMA quando existe. */
+const PROBABILIDADE_POR_ESTAGIO = {'Novo Lead':10,'Contato Iniciado':20,'Diagnóstico Agendado':35,'Diagnóstico Realizado':50,'Proposta Enviada':65,'Em Negociação':75,'Aguardando Decisão':80,'Fechado - Ganho':100,'Sem Retorno':5,'Momento Inadequado':5};
+function probabilidadeFechamento(p){
+  if(p.estagio && p.estagio.startsWith('Perdido')) return 0;
+  let base = PROBABILIDADE_POR_ESTAGIO[p.estagio];
+  if(base===undefined) base = 10;
+  if(p.temperatura==='Quente') base = Math.min(100, base+10);
+  if(p.temperatura==='Fria') base = Math.max(0, base-10);
+  return base;
+}
+function custoDoLead(p){
+  if(p.origem !== 'Tráfego pago') return null;
+  const campanha = p.campanha ? state.trafego.campanhas.find(c=>c.nome===p.campanha) : null;
+  if(campanha && Number(campanha.leads)>0) return Number(campanha.investimento||0)/Number(campanha.leads);
+  const investTotal = state.trafego.campanhas.reduce((a,c)=>a+Number(c.investimento||0),0);
+  const leadsTotal = state.trafego.campanhas.reduce((a,c)=>a+Number(c.leads||0),0);
+  return leadsTotal>0 ? investTotal/leadsTotal : null;
+}
+function roiDoLead(p){
+  const custo = custoDoLead(p);
+  if(custo===null || custo<=0 || p.estagio!=='Fechado - Ganho') return null;
+  const valor = Number(p.valor||p.valorEstimado||0);
+  if(!valor) return null;
+  return Math.round(((valor-custo)/custo)*100);
+}
+function ltvPrevisto(p){
+  const ehCliente = p.papeis && p.papeis.includes('cliente');
+  const base = ehCliente ? Number(p.valor||0) : Number(p.valorEstimado||0);
+  const upgrade = ehCliente ? UPGRADE_METODO_ALMA[p.produto] : null;
+  let upgradeValor = 0;
+  if(upgrade){
+    const produtoUpgrade = state.meta.produtos.find(pr=>pr.nome===upgrade);
+    if(produtoUpgrade) upgradeValor = Math.max(0, Number(produtoUpgrade.preco||0) - base);
+  }
+  return {base, upgradeValor};
+}
+function proximaAcaoRecomendada(p){
+  const ehLead = p.papeis && p.papeis.includes('lead');
+  const ehCliente = p.papeis && p.papeis.includes('cliente');
+  const abrirModalHistorico = tipo => `addHistoricoGenerico('pessoas','${p.id}','${tipo}')`;
+
+  if(ehCliente && p.status==='ativa'){
+    const checklist = p.checklist||[];
+    const proxima = checklist.find(i=>!i.done);
+    if(proxima) return {texto:'Concluir etapa: '+proxima.step, botaoHtml:''};
+    return {texto:'Checklist completo — finalizar atendimento', botaoHtml:`<button class="btn gold xs" onclick="editCliente('${p.id}')">Finalizar</button>`};
+  }
+  if(ehCliente && p.status==='finalizada'){
+    const pediuDepoimento = (p.historico||[]).some(h=>/depoimento/i.test(h.nota||''));
+    if(!pediuDepoimento) return {texto:'Solicitar depoimento', botaoHtml:`<button class="btn gold xs" onclick="${abrirModalHistorico('Mensagem')}">Registrar contato</button>`};
+    const upgradeSugerido = UPGRADE_METODO_ALMA[p.produto];
+    if(upgradeSugerido){
+      const dias = diasSemAtividade(p.historico, p.dataFechamento);
+      const jaSugeriu = (p.historico||[]).some(h=>/upgrade/i.test(h.nota||''));
+      if(dias!==null && dias>=60 && !jaSugeriu) return {texto:'Oferecer upgrade → '+upgradeSugerido, botaoHtml:`<button class="btn gold xs" onclick="converterCliente('${p.id}')">Registrar upgrade</button>`};
+    }
+    return {texto:'Nenhuma ação pendente — atendimento concluído', botaoHtml:'', neutro:true};
+  }
+  if(ehLead && !ehCliente){
+    if(p.estagio && p.estagio.startsWith('Perdido')) return {texto:'Agendar reativação (D+30/D+90)', botaoHtml:'', neutro:true};
+    if(p.estagio==='Sem Retorno' || p.estagio==='Momento Inadequado') return {texto:'Reativar contato', botaoHtml:`<button class="btn gold xs" onclick="${abrirModalHistorico('Mensagem')}">Registrar contato</button>`};
+    if(p.estagio==='Fechado - Ganho') return {texto:'Virar cliente', botaoHtml:`<button class="btn gold xs" onclick="converterCliente('${p.id}')">Virar cliente</button>`};
+    if(p.estagio==='Proposta Enviada'){
+      if(!p.proximoFollowUp) return {texto:'Agendar follow-up da proposta', botaoHtml:`<button class="btn gold xs" onclick="editLead('${p.id}')">Definir follow-up</button>`};
+      const d = daysDiff(p.proximoFollowUp);
+      if(d<=0) return {texto:'Fazer follow-up da proposta', botaoHtml:`<button class="btn gold xs" onclick="${abrirModalHistorico('Mensagem')}">Registrar contato</button>`};
+      return {texto:'Aguardar follow-up em '+fmtDate(p.proximoFollowUp), botaoHtml:'', neutro:true};
+    }
+    const teveInteracaoReal = (p.historico||[]).some(h=>h.tipo && h.tipo!=='Mudança de status');
+    if(!teveInteracaoReal) return {texto:'Fazer primeiro contato', botaoHtml:`<button class="btn gold xs" onclick="${abrirModalHistorico('Mensagem')}">Registrar contato</button>`};
+    if(p.estagio==='Novo Lead') return {texto:'Iniciar conversa', botaoHtml:`<button class="btn gold xs" onclick="${abrirModalHistorico('Mensagem')}">Registrar contato</button>`};
+    if(p.estagio==='Contato Iniciado') return {texto:'Agendar diagnóstico', botaoHtml:`<button class="btn gold xs" onclick="addEventoParaCliente('${p.id}')">Agendar</button>`};
+    if(p.estagio==='Diagnóstico Agendado') return {texto:'Realizar diagnóstico', botaoHtml:'', neutro:true};
+    if(p.estagio==='Diagnóstico Realizado') return {texto:'Enviar proposta', botaoHtml:`<button class="btn gold xs" onclick="${abrirModalHistorico('Proposta enviada')}">Registrar proposta</button>`};
+    if(p.estagio==='Em Negociação' || p.estagio==='Aguardando Decisão') return {texto:'Fazer follow-up e reforçar valor', botaoHtml:`<button class="btn gold xs" onclick="${abrirModalHistorico('Mensagem')}">Registrar contato</button>`};
+  }
+  return {texto:'Sem recomendação no momento', botaoHtml:'', neutro:true};
+}
+function definirProximaAcao(id){
+  const p = state.pessoas.find(x=>x.id===id);
+  openModal('Definir próxima ação', [
+    {key:'texto', label:'Próxima ação', type:'text', required:true},
+    {key:'data', label:'Data prevista', type:'date'}
+  ], p.proximaAcao || {data: todayStr()});
+  modalOnSave = (data)=>{ p.proximaAcao = {texto:data.texto, data:data.data}; save(); render(); };
+}
+function concluirProximaAcao(id){
+  const p = state.pessoas.find(x=>x.id===id);
+  if(!p || !p.proximaAcao) return;
+  if(!p.historico) p.historico = [];
+  p.historico.push({id:uid(), data:todayStr(), tipo:'Mudança de status', nota:'Ação concluída: '+p.proximaAcao.texto+'.', autor:getUsuarioAtual()||''});
+  p.proximaAcao = null;
+  save(); render();
+}
+function renderProximaAcao(p){
+  if(p.proximaAcao && p.proximaAcao.texto){
+    const d = p.proximaAcao.data ? daysDiff(p.proximaAcao.data) : null;
+    const atraso = d!==null && d<0;
+    return `<div class="proxima-acao${atraso?' atraso':''}">
+      <div><div class="rotulo">Próxima ação (definida por você)</div><div class="texto">${escHtml(p.proximaAcao.texto)}</div>${p.proximaAcao.data? `<div class="pa-data">${fmtDate(p.proximaAcao.data)}${atraso?' · atrasada':''}</div>`:''}</div>
+      <div style="display:flex;gap:8px;flex-shrink:0;"><button class="btn ghost xs" onclick="definirProximaAcao('${p.id}')">Editar</button><button class="btn gold xs" onclick="concluirProximaAcao('${p.id}')">✓ Concluir</button></div>
+    </div>`;
+  }
+  const rec = proximaAcaoRecomendada(p);
+  return `<div class="proxima-acao${rec.neutro?' neutro':''}">
+    <div><div class="rotulo">Próxima ação recomendada</div><div class="texto">${escHtml(rec.texto)}</div></div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">${rec.botaoHtml||''}<button class="btn ghost xs" onclick="definirProximaAcao('${p.id}')">Definir manualmente</button></div>
+  </div>`;
 }
 function renderDashboard(){
   const mesAtual = todayStr().slice(0,7);
@@ -1160,6 +1420,15 @@ function getAtencaoHoje(){
   getLeads().forEach(l=>{ if(l.proximoFollowUp){ const d=daysDiff(l.proximoFollowUp); if(d<=0) items.push({tipo:'Follow-up CRM', nome:l.nome, data:l.proximoFollowUp, atraso:d<0, link:()=>abrirFicha(l.id), concluir:()=>{ l.proximoFollowUp=''; save(); render(); }});} });
   getClientes().forEach(cl=>{ if(cl.proximoReminder){ const d=daysDiff(cl.proximoReminder); if(d<=0) items.push({tipo:'Cliente aguardando retorno ('+(cl.tipoReminder||'check-in')+')', nome:cl.nome, data:cl.proximoReminder, atraso:d<0, link:()=>abrirChecklist(cl.id), concluir:()=>{ cl.proximoReminder=''; save(); render(); }}); } });
   state.gestao.tarefas.forEach(t=>{ if(t.status!=='Concluído' && t.prazo){ const d=daysDiff(t.prazo); if(d<=0) items.push({tipo:'Tarefa'+(t.prioridade==='Alta'?' prioritária':''), nome:t.titulo, data:t.prazo, atraso:d<0, link:()=>abrirFichaTarefa(t.id), concluir:()=>{ logMudancaStatus(t,'Status',t.status,'Concluído'); t.status='Concluído'; save(); render(); }}); } });
+  state.pessoas.forEach(p=>{
+    if(p.proximaAcao && p.proximaAcao.data){
+      const d = daysDiff(p.proximaAcao.data);
+      if(d<=0){
+        const abrirFn = (p.papeis && p.papeis.includes('cliente')) ? ()=>abrirChecklist(p.id) : ()=>abrirFicha(p.id);
+        items.push({tipo:'Próxima ação: '+p.proximaAcao.texto, nome:p.nome, data:p.proximaAcao.data, atraso:d<0, link:abrirFn, concluir:()=>concluirProximaAcao(p.id)});
+      }
+    }
+  });
   state.agenda.eventos.filter(e=>e.data===todayStr()).forEach(e=> items.push({tipo:'Agenda hoje', nome:e.titulo+(e.hora?' às '+e.hora:''), data:e.data, atraso:false}));
   state.gestao.reunioes.filter(r=>r.data===todayStr()).forEach(r=> items.push({tipo:'Reunião hoje', nome:r.pauta.slice(0,50), data:r.data, atraso:false}));
   /* Heurísticas extras — insights derivados, não dados brutos novos */
@@ -1337,6 +1606,7 @@ function addMesMeta(){
   save(); render();
 }
 function salvarTicketMedio(){ state.meta.ticketMedio = Number(document.getElementById('ticketMedioInput').value)||4625; save(); render(); }
+function salvarPrazoPreparoEtapa(){ state.meta.prazoPreparoEtapa = Number(document.getElementById('prazoPreparoInput').value)||3; save(); render(); mostrarToast('Prazo padrão salvo.'); }
 function addProduto(){
   openModal('Novo produto', [{key:'nome',label:'Nome',type:'text',required:true},{key:'preco',label:'Preço (R$)',type:'number',required:true},{key:'descricao',label:'Descrição',type:'textarea'}]);
   modalOnSave = (data)=>{ state.meta.produtos.push({id:uid(), nome:data.nome, preco:Number(data.preco), descricao:data.descricao}); save(); render(); };
@@ -1368,7 +1638,9 @@ function renderCRM(){
     const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
     let fuTag = '—';
     if(fu!==null){ fuTag = `<span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span>`; }
-    return `<tr><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(l.nome))}</span>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
+    const prob = probabilidadeFechamento(l);
+    const probClasse = prob>=70? 'stage-won' : prob>=40? 'stage-proposal' : prob===0? 'stage-lost' : 'stage-new';
+    return `<tr><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(l.nome))}</span>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td><span class="tag ${probClasse}">${prob}%</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
     <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.papeis.includes('cliente')? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
   }).join('');
   return `
@@ -1382,7 +1654,7 @@ function renderCRM(){
       </div>
       <button class="btn gold xs" onclick="addLead()">+ Novo lead</button>
     </div>
-    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads, 'estagio', 'leads') : (leads.length? `<table><thead><tr><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : emptyState('Nenhum lead cadastrado ainda.', '<button class="btn gold xs" onclick="addLead()">+ Novo lead</button>'))}
+    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads, 'estagio', 'leads') : (leads.length? `<table><thead><tr><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Probabilidade</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : emptyState('Nenhum lead cadastrado ainda.', '<button class="btn gold xs" onclick="addLead()">+ Novo lead</button>'))}
   </div>
   <div class="card" style="margin-top:16px;">
     <h3 class="section-title">Resumo por estágio</h3>
@@ -1464,6 +1736,8 @@ function leadFields(){
     {key:'contato', label:'Contato (WhatsApp/Instagram)', type:'text'},
     {key:'dataCriacao', label:'Data de entrada', type:'date', required:true},
     {key:'origem', label:'Origem', type:'select', options:['Instagram','TikTok','WhatsApp','Indicação','Tráfego pago','Outro']},
+    {key:'campanha', label:'Campanha (se veio de tráfego pago)', type:'select', options:[{value:'',label:'— nenhuma —'}, ...state.trafego.campanhas.map(c=>c.nome)]},
+    {key:'postOrigem', label:'Post de origem (se veio de um post específico)', type:'select', options:[{value:'',label:'— nenhum —'}, ...state.conteudo.posts.map(p=>({value:p.id, label:fmtDate(p.data)+' — '+p.plataforma+' '+p.formato+(p.pilar?' ('+p.pilar+')':'')}))]},
     {key:'estagio', label:'Estágio', type:'select', options: state.crm.stages},
     {key:'temperatura', label:'Temperatura', type:'select', options:['Quente','Morna','Fria']},
     {key:'valorEstimado', label:'Valor estimado (R$)', type:'number'},
@@ -1484,7 +1758,8 @@ function addLead(){
   modalOnSave = (data)=>{
     const nova = Object.assign({id:uid(), papeis:['lead'], historico:[]}, data, {valorEstimado:Number(data.valorEstimado||0)});
     nova.historico.push({id:uid(), data:nova.dataCriacao||todayStr(), tipo:'Mudança de status', nota:'Lead criada'+(nova.origem?' — origem: '+nova.origem:'')+'.', autor:getUsuarioAtual()||''});
-    state.pessoas.push(nova); save(); render();
+    state.pessoas.push(nova); save();
+    abrirFicha(nova.id);
   };
 }
 function editLead(id){
@@ -1522,7 +1797,8 @@ function historicoFields(tipoDefault){
   return [
     {key:'data', label:'Data', type:'date', required:true},
     {key:'tipo', label:'Tipo', type:'select', options:['Mensagem','Comentário','Ligação','Proposta enviada','Objeção','Pagamento','Reunião/Call','Mudança de status','Outro'], default: tipoDefault},
-    {key:'nota', label:'O que aconteceu', type:'textarea', required:true}
+    {key:'nota', label:'O que aconteceu', type:'textarea', required:true},
+    {key:'scriptUsado', label:'Script usado (opcional — pra saber depois qual script mais fecha)', type:'select', options:[{value:'',label:'— nenhum —'}, ...state.scripts.categorias.flatMap(cat=>cat.itens.map(it=>it.titulo))]}
   ];
 }
 function getColecao(colName){
@@ -1577,8 +1853,14 @@ function renderFichaPessoa(p, voltarLabel, voltarFn){
   const dias = diasSemAtividade(p.historico, p.dataFechamento||p.dataCriacao);
   const alertaAtividade = (dias!==null && dias>=15)? `<div class="tag overdue" style="margin-bottom:10px;display:inline-block;">Sem atividade há ${dias} dias</div>` : '';
   const tagsHtml = p.tags? p.tags.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="tag upcoming" style="margin-right:4px;">${escHtml(t)}</span>`).join('') : '';
+  const prob = ehLead? probabilidadeFechamento(p) : null;
+  const custoLead = ehLead? custoDoLead(p) : null;
+  const roiLead = ehLead? roiDoLead(p) : null;
+  const ltv = ltvPrevisto(p);
+  const ultimaNotaFicha = ultimaInteracao(p.historico);
   return `
   <div class="toolbar"><button class="btn ghost xs" onclick="${voltarFn}">← ${voltarLabel}</button></div>
+  ${renderProximaAcao(p)}
   <div class="card">
     <div class="toolbar"><span class="kanban-avatar" style="width:38px;height:38px;font-size:14px;">${escHtml(inicialNome(p.nome))}</span><h3 class="section-title" style="margin:0;">${escHtml(p.nome)}</h3>
       ${ehLead? `<button class="btn ghost xs" onclick="editLead('${p.id}')">Editar dados de lead</button>`:''}
@@ -1612,6 +1894,20 @@ function renderFichaPessoa(p, voltarLabel, voltarFn){
     ${p.notas? `<div style="margin-top:14px;"><div class="small-muted" style="font-weight:600;margin-bottom:4px;">Notas gerais</div><div style="font-size:13.5px;">${escHtml(p.notas)}</div></div>` : ''}
     ${(ehLead && !ehCliente)? `<div style="margin-top:14px;"><button class="btn gold xs" onclick="converterCliente('${p.id}')">Virar cliente</button></div>` : ''}
   </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Inteligência comercial</h3>
+    <div class="grid grid-4">
+      ${prob!==null? `<div class="kpi"><div class="label">Probabilidade</div><div class="value">${prob}%</div><div class="progress-wrap"><div class="progress-bar" style="width:${prob}%"></div></div></div>` : ''}
+      <div class="kpi"><div class="label">Temperatura</div><div class="value" style="font-size:18px;">${escHtml(p.temperatura)||'—'}</div></div>
+      <div class="kpi"><div class="label">Dias parada</div><div class="value">${dias!==null? dias : '—'}</div><div class="sub">${dias!==null? 'desde a última interação' : 'sem histórico ainda'}</div></div>
+      <div class="kpi"><div class="label">Última interação</div><div class="value" style="font-size:13px;font-weight:600;">${ultimaNotaFicha? escHtml(ultimaNotaFicha) : '—'}</div></div>
+      ${ehLead? `<div class="kpi"><div class="label">Origem</div><div class="value" style="font-size:18px;">${escHtml(p.origem)||'—'}</div></div>` : ''}
+      ${(ehLead && p.origem==='Tráfego pago')? `<div class="kpi"><div class="label">Campanha</div><div class="value" style="font-size:15px;">${escHtml(p.campanha)||'—'}</div></div>` : ''}
+      ${ehLead? `<div class="kpi"><div class="label">Custo do lead</div><div class="value" style="font-size:16px;">${custoLead!==null? fmtBRL(custoLead) : 'Orgânico'}</div></div>` : ''}
+      ${ehLead? `<div class="kpi"><div class="label">ROI</div><div class="value" style="font-size:18px;">${roiLead!==null? roiLead+'%' : '—'}</div><div class="sub">${roiLead===null?'só calcula após fechar, com custo real':''}</div></div>` : ''}
+      <div class="kpi"><div class="label">LTV previsto</div><div class="value">${fmtBRL(ltv.base)}</div>${ltv.upgradeValor>0? `<div class="sub">+ ${fmtBRL(ltv.upgradeValor)} se fizer upgrade</div>`:''}</div>
+    </div>
+  </div>
   ${ehCliente? renderChecklistBloco('pessoas', p.id, p.checklist, 'Checklist de execução') : ''}
   <div class="grid grid-3" style="margin-top:16px;align-items:start;">
     <div class="card">
@@ -1626,6 +1922,10 @@ function renderFichaPessoa(p, voltarLabel, voltarFn){
       <h3 class="section-title">Financeiro</h3>
       ${financeiroRel.length? financeiroRel.map(f=>`<div class="checklist-item"><span style="flex:1;">${fmtDate(f.data)} — ${escHtml(f.categoria)||f.tipo}</span><b>${fmtBRL(f.valor)}</b></div>`).join('') : emptyState('Nenhum lançamento vinculado.')}
     </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Documentos e Fotos</h3><button class="btn gold xs" onclick="addLinkArquivoPessoa('${p.id}')">+ Adicionar link</button></div>
+    ${(p.arquivos&&p.arquivos.length)? p.arquivos.map(a=>`<div class="checklist-item"><span style="flex:1;">📎 <a href="${escHtml(a.url)}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;">${escHtml(a.nome)}</a></span><span class="small-muted" style="margin-right:8px;">${fmtDate(a.data)}</span><button class="btn danger xs" onclick="delArquivoPessoa('${p.id}','${a.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum documento ainda. Suba o arquivo no Google Drive (ou onde preferir) e cole o link aqui.', '<button class="btn gold xs" onclick="addLinkArquivoPessoa(\'${p.id}\')">+ Adicionar link</button>')}
   </div>
   ${renderHistoricoBloco('pessoas', p.id, p.historico)}`;
 }
@@ -1719,7 +2019,8 @@ function addCliente(){
   modalOnSave = (data)=>{
     const nova = Object.assign({id:uid(), papeis:['cliente'], checklist:checklistParaProduto(data.produto), historico:[]}, data, {valor:Number(data.valor||0), valorRecebido:valorFinalRecebido(data)});
     nova.historico.push({id:uid(), data:nova.dataFechamento||todayStr(), tipo:'Mudança de status', nota:'Cliente cadastrada diretamente'+(nova.produto?' — produto '+nova.produto:'')+'.', autor:getUsuarioAtual()||''});
-    state.pessoas.push(nova); save(); render();
+    state.pessoas.push(nova); save();
+    abrirChecklist(nova.id);
   };
 }
 function editCliente(id){
@@ -1749,6 +2050,23 @@ function abrirChecklist(id){
 }
 function fecharChecklist(){ clientesView = 'lista'; clientesChecklistId = null; render(); }
 /* Checklist genérico — mesmo padrão do histórico, reaproveitado por clientes e tarefas */
+/* Motor do Método ALMA: concluir uma etapa dispara sozinha a preparação da próxima — tarefa de preparo sempre, evento de agenda quando a etapa envolve encontro com a cliente. Genérico por palavra-chave no nome da etapa, então funciona pra Mapa Alma, Projeto Alma e o complemento de Visagismo sem precisar de receita fixa por produto. */
+const PALAVRAS_ETAPA_COM_ENCONTRO = /atendimento|encontro|diagnóstico|devolutiva|shopping|apresentação|triagem|mapeamento|aula/i;
+function dispararProximaEtapa(p, idx){
+  const checklist = p.checklist||[];
+  const proxima = checklist[idx+1];
+  if(!proxima || proxima.done) return;
+  const responsavel = p.responsavel || getUsuarioAtual() || (state.gestao.equipe[0]? state.gestao.equipe[0].nome : 'Eu');
+  const prazoPreparo = state.meta.prazoPreparoEtapa!==undefined ? Number(state.meta.prazoPreparoEtapa) : 3;
+  const tituloTarefa = proxima.notaPreparo ? proxima.notaPreparo : 'Preparar: '+proxima.step;
+  state.gestao.tarefas.push({id:uid(), titulo:tituloTarefa, responsavel, clienteId:p.id, categoria:'Atendimento', prioridade:'Média', status:'A fazer', prazo:addDays(todayStr(),prazoPreparo), historico:[], checklist:[]});
+  let criouEvento = false;
+  if(PALAVRAS_ETAPA_COM_ENCONTRO.test(proxima.step)){
+    state.agenda.eventos.push({id:uid(), titulo:proxima.step, data:addDays(todayStr(),5), tipo:'Atendimento', clienteId:p.id, local:'', observacoes:'Sugerido automaticamente pelo Método ALMA ao concluir a etapa anterior.'});
+    criouEvento = true;
+  }
+  mostrarToast('Próxima etapa preparada: tarefa'+(criouEvento?' e evento de agenda':'')+' criados.');
+}
 function toggleChecklistItem(colName, itemId, idx){
   const item = getColecao(colName).find(x=>x.id===itemId);
   if(!item.checklist) item.checklist = [];
@@ -1757,6 +2075,7 @@ function toggleChecklistItem(colName, itemId, idx){
   if(!estavaConcluida){
     if(!item.historico) item.historico = [];
     item.historico.push({id:uid(), data:todayStr(), tipo:'Mudança de status', nota:'Etapa concluída: '+item.checklist[idx].step+'.', autor:getUsuarioAtual()||''});
+    if(colName==='pessoas') dispararProximaEtapa(item, idx);
   }
   save(); render();
 }
@@ -1785,12 +2104,44 @@ function renderChecklistBloco(colName, itemId, checklist, titulo){
     <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
     <div class="small-muted" style="margin-top:6px;">${done}/${checklist.length} etapas concluídas (${pct}%)</div>
     <div style="margin-top:16px;">
-    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item ${item.done?'done':''}"><input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${colName}','${itemId}',${idx})"><span style="flex:1;">${escHtml(item.step)}</span><button class="btn ghost xs" onclick="delChecklistItem('${colName}','${itemId}',${idx})">Excluir</button></div>`).join('') : emptyState('Sem etapas definidas ainda.', `<button class="btn gold xs" onclick="addChecklistItem('${colName}','${itemId}')">+ Adicionar etapa</button>`)}
+    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item ${item.done?'done':''}" style="align-items:flex-start;">
+      <input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${colName}','${itemId}',${idx})" style="margin-top:3px;">
+      <div style="flex:1;"><span>${escHtml(item.step)}</span>${(colName==='pessoas' && item.notaPreparo)? `<div class="small-muted" style="font-style:italic;margin-top:2px;">Preparo: ${escHtml(item.notaPreparo)}</div>` : ''}</div>
+      ${colName==='pessoas'? `<button class="btn ghost xs" onclick="editarNotaPreparoChecklist('${colName}','${itemId}',${idx})">${item.notaPreparo?'Editar preparo':'+ Preparo'}</button>` : ''}
+      <button class="btn ghost xs" onclick="delChecklistItem('${colName}','${itemId}',${idx})">Excluir</button>
+    </div>`).join('') : emptyState('Sem etapas definidas ainda.', `<button class="btn gold xs" onclick="addChecklistItem('${colName}','${itemId}')">+ Adicionar etapa</button>`)}
     </div>
   </div>`;
 }
+/* Nota de preparo por etapa: totalmente livre e editável a qualquer momento — quando definida, vira o texto exato da tarefa que o motor do Método ALMA cria ao concluir a etapa anterior. Sem regra fixa por produto, porque cada cliente é um caso. */
+function editarNotaPreparoChecklist(colName, itemId, idx){
+  const item = getColecao(colName).find(x=>x.id===itemId);
+  const atual = item.checklist[idx];
+  openModal('Preparo antes de "'+atual.step+'"', [
+    {key:'notaPreparo', label:'O que preparar antes dessa etapa (opcional — em branco usa o padrão genérico)', type:'textarea'}
+  ], {notaPreparo: atual.notaPreparo||''});
+  modalOnSave = (data)=>{ atual.notaPreparo = data.notaPreparo; save(); render(); };
+}
 function addTarefaParaCliente(clienteId){ criarRegistro(state.gestao.tarefas, 'Nova tarefa', tarefaFields, {status:'A fazer', prioridade:'Média', clienteId}, {historico:[], checklist:[]}); }
 function addEventoParaCliente(clienteId){ criarRegistro(state.agenda.eventos, 'Novo evento', eventoFields, {data: todayStr(), clienteId}); }
+/* Documentos e Fotos — versão por link (não upload real). O arquivo em si fica onde ela já guarda hoje (Google Drive etc); o sistema só guarda o nome e o link, que é leve e sincroniza normal. Zero risco de estourar o limite do localStorage/Firestore. */
+function linkArquivoFields(){ return [{key:'nome', label:'Nome do documento', type:'text', required:true}, {key:'url', label:'Link (Google Drive, iCloud, etc)', type:'text', required:true}]; }
+function addLinkArquivoPessoa(pessoaId){
+  openModal('Adicionar link de documento', linkArquivoFields(), {});
+  modalOnSave = (data)=>{
+    const p = state.pessoas.find(x=>x.id===pessoaId);
+    if(!p.arquivos) p.arquivos = [];
+    p.arquivos.push({id:uid(), nome:data.nome, url:data.url, data:todayStr()});
+    save(); render();
+  };
+}
+function delArquivoPessoa(pessoaId, arquivoId){
+  confirmarAcao('Excluir esse link?', ()=>{
+    const p = state.pessoas.find(x=>x.id===pessoaId);
+    p.arquivos = (p.arquivos||[]).filter(a=>a.id!==arquivoId);
+    save(); render();
+  }, {perigo:true, textoConfirmar:'Excluir'});
+}
 
 /* ===================== AGENDA ===================== */
 let agendaView = 'dia';
@@ -2246,9 +2597,280 @@ function handleDesconectarCloud(){
 }
 
 /* ===================== BACKUP & CONFIG ===================== */
+function movimentoPessoalFields(tipo){
+  const cats = tipo==='entrada' ? ['Salário/Pró-labore','Outra renda'] : [...financasPessoais.categoriasFixas, ...financasPessoais.categoriasVariaveis].map(c=>c.nome);
+  return [
+    {key:'data', label:'Data', type:'date', required:true},
+    {key:'categoria', label:'Categoria', type:'select', options:cats},
+    {key:'valor', label:'Valor (R$)', type:'number', required:true},
+    {key:'observacoes', label:'Observações', type:'text'}
+  ];
+}
+function addMovimentoPessoal(tipo){
+  openModal('Novo '+(tipo==='entrada'?'ganho':'gasto'), movimentoPessoalFields(tipo), {data:todayStr()});
+  modalOnSave = (data)=>{
+    const arr = tipo==='entrada'? financasPessoais.entradas : financasPessoais.saidas;
+    arr.push(Object.assign({id:uid()}, data, {valor:Number(data.valor||0)}));
+    saveFinancasPessoais(); render();
+  };
+}
+function delMovimentoPessoal(tipo, id){
+  confirmarAcao('Excluir esse lançamento?', ()=>{
+    if(tipo==='entrada') financasPessoais.entradas = financasPessoais.entradas.filter(x=>x.id!==id);
+    else financasPessoais.saidas = financasPessoais.saidas.filter(x=>x.id!==id);
+    saveFinancasPessoais(); render();
+  }, {perigo:true, textoConfirmar:'Excluir'});
+}
+function addCategoriaPessoal(tipoLista){
+  openModal('Nova categoria', [{key:'nome', label:'Nome', type:'text', required:true}]);
+  modalOnSave = (data)=>{ financasPessoais[tipoLista].push({id:uid(), nome:data.nome}); saveFinancasPessoais(); render(); };
+}
+function delCategoriaPessoal(tipoLista, id){
+  confirmarAcao('Excluir categoria?', ()=>{ financasPessoais[tipoLista] = financasPessoais[tipoLista].filter(x=>x.id!==id); saveFinancasPessoais(); render(); }, {perigo:true, textoConfirmar:'Excluir'});
+}
+/* Bancos */
+function bancoFields(){ return [{key:'nome',label:'Nome do banco',type:'text',required:true},{key:'tipo',label:'Tipo de conta',type:'select',options:['Conta corrente','Poupança','Investimento','Outro']}]; }
+function addBanco(){ openModal('Novo banco', bancoFields()); modalOnSave=(data)=>{ financasPessoais.bancos.push(Object.assign({id:uid()},data)); saveFinancasPessoais(); render(); }; }
+function editBanco(id){ const b=financasPessoais.bancos.find(x=>x.id===id); openModal('Editar banco', bancoFields(), b); modalOnSave=(data)=>{ Object.assign(b,data); saveFinancasPessoais(); render(); }; }
+function delBanco(id){ confirmarAcao('Excluir banco?', ()=>{ financasPessoais.bancos=financasPessoais.bancos.filter(x=>x.id!==id); saveFinancasPessoais(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+/* Cartões de crédito */
+function cartaoFields(){ return [
+  {key:'nome', label:'Nome do cartão', type:'text', required:true},
+  {key:'banco', label:'Banco/Bandeira', type:'text'},
+  {key:'limite', label:'Limite (R$)', type:'number'},
+  {key:'diaFechamento', label:'Dia de fechamento da fatura', type:'number'},
+  {key:'diaVencimento', label:'Dia de vencimento', type:'number'}
+]; }
+function addCartao(){ openModal('Novo cartão', cartaoFields()); modalOnSave=(data)=>{ financasPessoais.cartoes.push(Object.assign({id:uid()},data,{limite:Number(data.limite||0)})); saveFinancasPessoais(); render(); }; }
+function editCartao(id){ const c=financasPessoais.cartoes.find(x=>x.id===id); openModal('Editar cartão', cartaoFields(), c); modalOnSave=(data)=>{ Object.assign(c,data,{limite:Number(data.limite||0)}); saveFinancasPessoais(); render(); }; }
+function delCartao(id){ confirmarAcao('Excluir cartão? Isso não apaga os parcelamentos já lançados nele.', ()=>{ financasPessoais.cartoes=financasPessoais.cartoes.filter(x=>x.id!==id); saveFinancasPessoais(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+/* Parcelamentos — cadastra a compra UMA vez, o sistema calcula sozinho em quais meses futuros ela pesa, sem precisar lançar parcela por parcela. */
+function parcelamentoFields(){ return [
+  {key:'descricao', label:'Descrição da compra', type:'text', required:true},
+  {key:'valorTotal', label:'Valor total (R$)', type:'number', required:true},
+  {key:'numParcelas', label:'Número de parcelas', type:'number', required:true},
+  {key:'categoria', label:'Categoria', type:'select', options:[...financasPessoais.categoriasFixas, ...financasPessoais.categoriasVariaveis].map(c=>c.nome)},
+  {key:'cartaoId', label:'Cartão', type:'select', options:[{value:'',label:'— nenhum (fora do cartão) —'}, ...financasPessoais.cartoes.map(c=>({value:c.id,label:c.nome}))]},
+  {key:'dataPrimeiraParcela', label:'Data da 1ª parcela', type:'date', required:true}
+]; }
+function addParcelamento(){
+  openModal('Novo parcelamento', parcelamentoFields(), {dataPrimeiraParcela:todayStr(), numParcelas:1});
+  modalOnSave = (data)=>{ financasPessoais.parcelamentos.push(Object.assign({id:uid()}, data, {valorTotal:Number(data.valorTotal||0), numParcelas:Math.max(1,Number(data.numParcelas||1))})); saveFinancasPessoais(); render(); };
+}
+function editParcelamento(id){
+  const p = financasPessoais.parcelamentos.find(x=>x.id===id);
+  openModal('Editar parcelamento', parcelamentoFields(), p);
+  modalOnSave = (data)=>{ Object.assign(p, data, {valorTotal:Number(data.valorTotal||0), numParcelas:Math.max(1,Number(data.numParcelas||1))}); saveFinancasPessoais(); render(); };
+}
+function delParcelamento(id){ confirmarAcao('Excluir esse parcelamento? Todas as parcelas futuras somem junto.', ()=>{ financasPessoais.parcelamentos=financasPessoais.parcelamentos.filter(x=>x.id!==id); saveFinancasPessoais(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
+function valorParcela(p){ return p.numParcelas>0 ? p.valorTotal/p.numParcelas : p.valorTotal; }
+function monthsBetween(ymInicio, ymFim){
+  const [y1,m1] = ymInicio.split('-').map(Number);
+  const [y2,m2] = ymFim.split('-').map(Number);
+  return (y2-y1)*12 + (m2-m1);
+}
+/* Parcelas que caem num mês específico, de todos os parcelamentos — é aqui que a "inteligência" acontece: nenhuma parcela é lançada manualmente, o sistema sabe sozinho quais caem em cada mês. */
+function parcelasDoMes(mes){
+  const resultado = [];
+  financasPessoais.parcelamentos.forEach(p=>{
+    if(!p.dataPrimeiraParcela) return;
+    const mesInicial = p.dataPrimeiraParcela.slice(0,7);
+    for(let i=0;i<p.numParcelas;i++){
+      if(addMonths(mesInicial, i) === mes) resultado.push({parcelamento:p, numeroParcela:i+1, valor:valorParcela(p)});
+    }
+  });
+  return resultado;
+}
+function totalParcelasDoMes(mes){ return parcelasDoMes(mes).reduce((a,x)=>a+x.valor,0); }
+function faturaCartaoDoMes(cartaoId, mes){ return parcelasDoMes(mes).filter(x=>x.parcelamento.cartaoId===cartaoId).reduce((a,x)=>a+x.valor,0); }
+function parcelamentosEmAberto(){
+  const mesAtual = todayStr().slice(0,7);
+  return financasPessoais.parcelamentos.map(p=>{
+    const mesInicial = (p.dataPrimeiraParcela||todayStr()).slice(0,7);
+    const decorridas = Math.min(Math.max(monthsBetween(mesInicial, mesAtual)+1, 0), p.numParcelas);
+    return Object.assign({}, p, {parcelasPagas:decorridas, parcelasRestantes:p.numParcelas-decorridas});
+  }).filter(p=>p.parcelasRestantes>0);
+}
+/* Insights de finanças pessoais — mesmo motor heurístico usado no resto do sistema (gerarInsights), sem IA, aplicado só a esse dado isolado. */
+function gerarInsightsFinancasPessoais(){
+  const insights = [];
+  const mesAtual = todayStr().slice(0,7);
+  const mesAnterior = addMonths(mesAtual,-1);
+  const porMes = arr => { const m={}; arr.forEach(e=>{ const mm=(e.data||'').slice(0,7); m[mm]=(m[mm]||0)+Number(e.valor||0); }); return m; };
+  const entradasPorMes = porMes(financasPessoais.entradas);
+  const saidasPorMes = porMes(financasPessoais.saidas);
+  const recMes = entradasPorMes[mesAtual]||0;
+  const despMes = (saidasPorMes[mesAtual]||0) + totalParcelasDoMes(mesAtual);
+  const despAnterior = (saidasPorMes[mesAnterior]||0) + totalParcelasDoMes(mesAnterior);
+  if(despAnterior>0 && despMes>0){
+    const variacao = Math.round((despMes-despAnterior)/despAnterior*100);
+    if(Math.abs(variacao)>=10) insights.push(`Seus gastos esse mês (incluindo parcelas) estão <b>${Math.abs(variacao)}% ${variacao>0?'maiores':'menores'}</b> que o mês passado.`);
+  }
+  const porCategoria = {};
+  financasPessoais.saidas.filter(s=>(s.data||'').slice(0,7)===mesAtual).forEach(s=>{ const cat=s.categoria||'Outros'; porCategoria[cat]=(porCategoria[cat]||0)+Number(s.valor||0); });
+  parcelasDoMes(mesAtual).forEach(x=>{ const cat=x.parcelamento.categoria||'Outros'; porCategoria[cat]=(porCategoria[cat]||0)+x.valor; });
+  const catsOrdenadas = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]);
+  if(catsOrdenadas.length) insights.push(`Sua maior categoria de gasto esse mês é <b>${escHtml(catsOrdenadas[0][0])}</b> — ${fmtBRL(catsOrdenadas[0][1])}.`);
+  const parcelasAtivas = parcelamentosEmAberto();
+  if(parcelasAtivas.length){
+    const totalComprometido = parcelasAtivas.reduce((a,p)=>a+valorParcela(p)*p.parcelasRestantes,0);
+    insights.push(`Você tem <b>${parcelasAtivas.length} parcelamento(s) em aberto</b>, totalizando ${fmtBRL(totalComprometido)} ainda a pagar.`);
+  }
+  if(recMes>0){
+    const taxaPoupanca = Math.round(((recMes-despMes)/recMes)*100);
+    insights.push(`Você está guardando <b>${taxaPoupanca}%</b> da sua renda esse mês (já contando parcelas).`);
+  }
+  return insights;
+}
+function renderFinancasPessoais(){
+  if(!financasPessoais.pin){
+    return `<div class="card" style="max-width:460px;">
+      <h3 class="section-title">Finanças Pessoais</h3>
+      <div class="note">Essa aba é só sua — protegida por PIN local e <b>nunca sincronizada com a nuvem</b>, mesmo com a sincronização ativa pro resto do sistema. Não é segurança de verdade contra alguém tecnicamente capaz, mas ninguém mais vê esse dado por padrão. Crie um PIN pra começar.</div>
+      <button class="btn gold" onclick="configurarPinFinancas()">Criar PIN de acesso</button>
+    </div>`;
+  }
+  if(!financasPessoaisDestrancada){
+    return `<div class="card" style="max-width:460px;">
+      <h3 class="section-title">🔒 Finanças Pessoais trancadas</h3>
+      <div class="note">Só você vê essa aba. Digite seu PIN pra continuar.</div>
+      <div class="toolbar"><button class="btn gold" onclick="entrarComPinFinancas()">Digitar PIN</button></div>
+      <button class="btn ghost xs" onclick="resetarPinFinancas()">Esqueci meu PIN</button>
+    </div>`;
+  }
+  const mesAtual = todayStr().slice(0,7);
+  const entradasMes = financasPessoais.entradas.filter(e=>(e.data||'').slice(0,7)===mesAtual);
+  const saidasMes = financasPessoais.saidas.filter(e=>(e.data||'').slice(0,7)===mesAtual);
+  const parcelasMes = parcelasDoMes(mesAtual);
+  const recMes = entradasMes.reduce((a,e)=>a+Number(e.valor||0),0);
+  const despAvulsaMes = saidasMes.reduce((a,e)=>a+Number(e.valor||0),0);
+  const despParcelasMes = parcelasMes.reduce((a,x)=>a+x.valor,0);
+  const despMes = despAvulsaMes + despParcelasMes;
+  const saldoMes = recMes-despMes;
+  const insights = gerarInsightsFinancasPessoais();
+  const mov = [...financasPessoais.entradas.map(e=>({...e,tipo:'entrada'})), ...financasPessoais.saidas.map(e=>({...e,tipo:'saída'}))].sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const parcelasAtivas = parcelamentosEmAberto();
+  return `
+  <div class="toolbar"><button class="btn ghost xs" onclick="trancarFinancas()">🔒 Trancar</button><button class="btn ghost xs" onclick="trocarPinFinancas()">Trocar PIN</button></div>
+  <div class="grid grid-4" style="margin-top:12px;">
+    <div class="card kpi hero"><div class="label">Saldo do mês</div><div class="value">${fmtBRL(saldoMes)}</div></div>
+    <div class="card kpi"><div class="label">Receita do mês</div><div class="value">${fmtBRL(recMes)}</div></div>
+    <div class="card kpi"><div class="label">Gastos do mês</div><div class="value">${fmtBRL(despMes)}</div><div class="sub">${fmtBRL(despAvulsaMes)} avulso + ${fmtBRL(despParcelasMes)} em parcelas</div></div>
+    <div class="card kpi"><div class="label">Taxa de poupança</div><div class="value">${recMes>0?Math.round((saldoMes/recMes)*100):0}%</div></div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Insights automáticos</h3>
+    ${insights.length? insights.map(i=>`<div class="insight-item">◆&nbsp; ${i}</div>`).join('') : emptyState('Ainda não há dados suficientes pra gerar insights confiáveis.')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Lançamentos</h3><button class="btn gold xs" onclick="addMovimentoPessoal('entrada')">+ Ganho</button> <button class="btn ghost xs" onclick="addMovimentoPessoal('saida')">+ Gasto avulso</button></div>
+    ${mov.length? `<table><thead><tr><th>Data</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th></th></tr></thead><tbody>${mov.map(m=>`<tr><td>${fmtDate(m.data)}</td><td>${escHtml(m.categoria)}</td><td>${m.tipo}</td><td>${fmtBRL(m.valor)}</td><td><button class="btn danger xs" onclick="delMovimentoPessoal('${m.tipo==='entrada'?'entrada':'saida'}','${m.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>` : emptyState('Nenhum lançamento avulso ainda.', '<button class="btn gold xs" onclick="addMovimentoPessoal(\'entrada\')">+ Ganho</button>')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Cartões de Crédito</h3><button class="btn gold xs" onclick="addCartao()">+ Cartão</button></div>
+    ${financasPessoais.cartoes.length? financasPessoais.cartoes.map(c=>`<div class="checklist-item"><span style="flex:1;">${escHtml(c.nome)}${c.banco?' — '+escHtml(c.banco):''}${c.diaVencimento?' · vence dia '+escHtml(String(c.diaVencimento)):''}</span><b>${fmtBRL(faturaCartaoDoMes(c.id, mesAtual))}</b><span class="small-muted" style="margin:0 8px;">fatura deste mês</span><button class="btn ghost xs" onclick="editCartao('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCartao('${c.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum cartão cadastrado ainda.', '<button class="btn gold xs" onclick="addCartao()">+ Cartão</button>')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Parcelamentos em aberto</h3><button class="btn gold xs" onclick="addParcelamento()">+ Parcelamento</button></div>
+    ${parcelasAtivas.length? `<table><thead><tr><th>Descrição</th><th>Cartão</th><th>Parcela</th><th>Valor da parcela</th><th>Restam</th><th></th></tr></thead><tbody>${parcelasAtivas.map(p=>{ const cartao = financasPessoais.cartoes.find(c=>c.id===p.cartaoId); return `<tr><td>${escHtml(p.descricao)}</td><td>${cartao?escHtml(cartao.nome):'—'}</td><td>${Math.min(p.parcelasPagas+1,p.numParcelas)}/${p.numParcelas}</td><td>${fmtBRL(valorParcela(p))}</td><td>${p.parcelasRestantes}</td><td><button class="btn ghost xs" onclick="editParcelamento('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delParcelamento('${p.id}')">Excluir</button></td></tr>`; }).join('')}</tbody></table>` : emptyState('Nenhum parcelamento em aberto.', '<button class="btn gold xs" onclick="addParcelamento()">+ Parcelamento</button>')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="toolbar"><h3 class="section-title" style="margin:0;">Bancos</h3><button class="btn gold xs" onclick="addBanco()">+ Banco</button></div>
+    ${financasPessoais.bancos.length? financasPessoais.bancos.map(b=>`<div class="checklist-item"><span style="flex:1;">${escHtml(b.nome)}</span><span class="small-muted" style="margin-right:10px;">${escHtml(b.tipo)||'—'}</span><button class="btn ghost xs" onclick="editBanco('${b.id}')">Editar</button> <button class="btn danger xs" onclick="delBanco('${b.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum banco cadastrado ainda.', '<button class="btn gold xs" onclick="addBanco()">+ Banco</button>')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Categorias de gasto</h3>
+    <div class="grid grid-2">
+      <div>
+        <div class="toolbar"><span class="small-muted" style="font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Fixas</span><button class="btn ghost xs" onclick="addCategoriaPessoal('categoriasFixas')">+</button></div>
+        ${financasPessoais.categoriasFixas.map(c=>`<div class="checklist-item"><span style="flex:1;">${escHtml(c.nome)}</span><button class="btn ghost xs" onclick="delCategoriaPessoal('categoriasFixas','${c.id}')">Excluir</button></div>`).join('')}
+      </div>
+      <div>
+        <div class="toolbar"><span class="small-muted" style="font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Variáveis</span><button class="btn ghost xs" onclick="addCategoriaPessoal('categoriasVariaveis')">+</button></div>
+        ${financasPessoais.categoriasVariaveis.map(c=>`<div class="checklist-item"><span style="flex:1;">${escHtml(c.nome)}</span><button class="btn ghost xs" onclick="delCategoriaPessoal('categoriasVariaveis','${c.id}')">Excluir</button></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function renderAnalytics(){
+  const k = crmKPIs();
+  const porOrigem = conversaoPorOrigem();
+  const etapasPerda = etapaQuePerdeMais();
+  const temposProduto = tempoFechamentoPorProduto();
+  const cidades = cidadesRanking();
+  const profissoesCompra = profissoesQueMaisCompram();
+  const profissoesIndicam = profissoesQueMaisIndicam();
+  const posts = postsQueMaisVendem();
+  const scripts = scriptsQueMaisFecham();
+  return `
+  <div class="note">Cruzamentos reais entre CRM, Clientes, Conteúdo e Scripts — tudo calculado sobre o que você já registra, sem IA e sem inventar correlação. Quanto mais completo o cadastro (cidade, profissão, origem, script usado), mais precisa fica essa tela.</div>
+
+  <div class="card">
+    <h3 class="section-title">Funil &amp; Conversão</h3>
+    <div class="grid grid-2" style="margin-top:6px;">
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Taxa de conversão por origem</div>
+        ${porOrigem.length? `<table><thead><tr><th>Origem</th><th>Leads</th><th>Ganhos</th><th>Taxa</th></tr></thead><tbody>${porOrigem.map(o=>`<tr><td>${escHtml(o.origem)}</td><td>${o.total}</td><td>${o.ganhos}</td><td><b>${o.taxa}%</b></td></tr>`).join('')}</tbody></table>` : emptyState('Sem leads suficientes ainda.')}
+      </div>
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Estágio que mais perde leads</div>
+        ${etapasPerda.length? etapasPerda.map(e=>`<div class="checklist-item"><span style="flex:1;">${escHtml(e.etapa)}</span><b>${e.n}</b></div>`).join('') : emptyState('Sem leads perdidos registrados ainda.')}
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Tempo médio de fechamento</div>
+      <div class="grid grid-3">
+        <div class="kpi"><div class="label">Geral</div><div class="value">${k.tempoMedioConversao!==null? k.tempoMedioConversao+' dias':'—'}</div><div class="sub">${k.tempoMedioConversao!==null? 'baseado em '+k.amostraConversao+' conversão(ões)':'sem conversões suficientes'}</div></div>
+        ${temposProduto.map(t=>`<div class="kpi"><div class="label">${escHtml(t.produto)}</div><div class="value">${t.media} dias</div><div class="sub">${t.amostra} conversão(ões)</div></div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Geografia &amp; Perfil</h3>
+    <div class="grid grid-3">
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Cidade que mais compra</div>
+        ${cidades.length? `<table><thead><tr><th>Cidade</th><th>Vendas</th><th>Faturamento</th></tr></thead><tbody>${cidades.map(c=>`<tr><td>${escHtml(c.cidade)}</td><td>${c.vendas}</td><td>${fmtBRL(c.faturamento)}</td></tr>`).join('')}</tbody></table>` : emptyState('Sem cidade cadastrada em nenhuma cliente ainda.')}
+      </div>
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Profissão que mais compra</div>
+        ${profissoesCompra.length? profissoesCompra.map(p=>`<div class="checklist-item"><span style="flex:1;">${escHtml(p.profissao)}</span><b>${fmtBRL(p.faturamento)}</b></div>`).join('') : emptyState('Sem profissão cadastrada ainda.')}
+      </div>
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Profissão que mais indica</div>
+        ${profissoesIndicam.length? profissoesIndicam.map(p=>`<div class="checklist-item"><span style="flex:1;">${escHtml(p.profissao)}</span><b>${p.n}</b></div>`).join('') : emptyState('Sem leads via indicação com profissão registrada ainda.')}
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Conteúdo &amp; Scripts</h3>
+    <div class="note">Essas duas dependem de marcação sua: escolha o "Post de origem" ao cadastrar um lead, e o "Script usado" ao registrar uma interação no histórico. Sem marcar, o sistema não tem como saber — não é possível descobrir isso sozinho de forma confiável.</div>
+    <div class="grid grid-2">
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Post que mais gera vendas</div>
+        ${posts.length? `<table><thead><tr><th>Post</th><th>Vendas</th><th>Faturamento</th></tr></thead><tbody>${posts.map(p=>`<tr><td>${escHtml(p.post)}</td><td>${p.vendas}</td><td>${fmtBRL(p.faturamento)}</td></tr>`).join('')}</tbody></table>` : emptyState('Nenhuma venda com post de origem marcado ainda.')}
+      </div>
+      <div>
+        <div class="small-muted" style="font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Script que mais fecha</div>
+        ${scripts.length? scripts.map(s=>`<div class="checklist-item"><span style="flex:1;">${escHtml(s.script)}</span><b>${s.n}</b></div>`).join('') : emptyState('Nenhuma interação com script usado marcado ainda.')}
+      </div>
+    </div>
+  </div>`;
+}
 function renderConfig(){
   return `
   <div class="card">
+    <h3 class="section-title">Motor do Método ALMA</h3>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label class="small-muted" style="font-weight:600;">Prazo padrão da tarefa de preparo (dias)</label>
+      <input id="prazoPreparoInput" type="number" value="${state.meta.prazoPreparoEtapa!==undefined?state.meta.prazoPreparoEtapa:3}" style="width:80px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;">
+      <button class="btn gold" onclick="salvarPrazoPreparoEtapa()">Salvar</button>
+    </div>
+    <div class="note" style="margin-top:10px;">Toda vez que você conclui uma etapa do checklist do Método ALMA, o sistema cria sozinho uma tarefa de preparo pra próxima etapa com esse prazo. O evento de agenda sugerido (quando a etapa envolve encontro com a cliente) continua fixo em +5 dias.</div>
+  </div>
+  <div class="card" style="margin-top:16px;">
     <h3 class="section-title">Backup de dados</h3>
     <p class="small-muted">Este arquivo guarda seus dados no navegador (localStorage). Isso NÃO é um backup de verdade — exporte com frequência (sugestão: toda semana, dentro da rotina semanal) e guarde o arquivo .json em local seguro (Google Drive, iCloud etc).</p>
     <div class="toolbar">
