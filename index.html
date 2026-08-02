@@ -55,6 +55,9 @@
 
   /* Main */
   #main{flex:1;min-width:0;padding:28px 34px 60px;}
+  /* Barra e menu mobile — escondidos por padrão; só aparecem dentro da media query de tela pequena. Definidos aqui fora também (não só dentro do @media) pra garantir que fiquem escondidos mesmo se o navegador não bater exatamente na media query. */
+  #mobile-topbar{display:none;}
+  #sidebar-backdrop{display:none;}
   #topbar{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
   #topbar h2{margin:0;font-size:24px;font-weight:600;letter-spacing:.3px;}
   #topbar .date-today{font-size:12.5px;color:var(--text-muted);}
@@ -66,7 +69,30 @@
   .grid-3{grid-template-columns:1fr 1fr 1fr;}
   .grid-4{grid-template-columns:repeat(4,1fr);}
   @media(max-width:1000px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:1fr 1fr;} .grid-2{grid-template-columns:1fr;}}
-  @media(max-width:640px){.grid-4,.grid-3{grid-template-columns:1fr;} #app{flex-direction:column;} #sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;padding:14px;} #sidebar .brand{width:100%;border:none;padding-bottom:8px;} .nav-section-label{display:none;} #main{padding:18px;}}
+  @media(max-width:640px){
+    .grid-4,.grid-3{grid-template-columns:1fr;}
+    #app{flex-direction:column;}
+    /* Menu lateral vira um painel retrátil (fora da tela por padrão) em vez de ficar sempre aberto empurrando o conteúdo pra baixo */
+    #mobile-topbar{
+      display:flex;align-items:center;gap:10px;cursor:pointer;
+      position:sticky;top:0;z-index:45;
+      background:var(--black);color:var(--cream);
+      padding:calc(14px + env(safe-area-inset-top)) 18px 14px;
+      font-weight:600;letter-spacing:1px;
+    }
+    #mobile-topbar .mobile-topbar-icon{font-size:19px;line-height:1;}
+    #mobile-topbar .mobile-topbar-brand{font-size:14px;}
+    #sidebar{
+      position:fixed;top:0;left:0;height:100%;width:82%;max-width:280px;z-index:50;
+      padding-top:calc(24px + env(safe-area-inset-top));
+      transform:translateX(-100%);transition:transform .25s ease;
+      box-shadow:2px 0 24px rgba(0,0,0,.35);
+    }
+    #sidebar.sidebar-aberta{transform:translateX(0);}
+    #sidebar-backdrop.visivel{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;}
+    #main{padding:18px;}
+    body.menu-mobile-aberto{overflow:hidden;}
+  }
 
   .kpi{padding:16px 18px;}
   .kpi .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;}
@@ -202,13 +228,14 @@
   .kanban-avatar{width:26px;height:26px;border-radius:50%;background:var(--gold);color:var(--black);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
   .kanban-card .ultima-nota{font-size:11.5px;color:var(--text-muted);font-style:italic;margin-top:5px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 
-  /* Reordenação por arrastar-e-soltar — genérico, usado em qualquer lista do sistema */
-  .arrastavel-item{cursor:grab;display:flex;align-items:center;gap:8px;}
+  /* Reordenação por arrastar-e-soltar — genérico, usado em qualquer lista do sistema. O flex fica só nos itens em div (checklists/cards); linhas de tabela (tr) mantêm o layout de tabela nativo, senão as colunas desalinham entre as linhas. */
+  .arrastavel-item{cursor:grab;}
+  div.arrastavel-item{display:flex;align-items:center;gap:8px;}
   .arrastavel-item:active{cursor:grabbing;}
   .arrastavel-item.arrastando{opacity:.35;}
   .arrastavel-item.dragover-topo{box-shadow:inset 0 2px 0 var(--gold);}
   .arrastavel-item.dragover-baixo{box-shadow:inset 0 -2px 0 var(--gold);}
-  .arrasta-alca{color:var(--text-muted);font-size:13px;flex-shrink:0;cursor:grab;user-select:none;}
+  .arrasta-alca{color:var(--text-muted);font-size:13px;flex-shrink:0;cursor:grab;user-select:none;touch-action:none;}
 
   .notif-wrap, .search-wrap{position:relative;}
   .notif-btn{position:relative;background:transparent;border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--text-dark);cursor:pointer;}
@@ -231,6 +258,8 @@
 </style>
 </head>
 <body>
+<div id="mobile-topbar" onclick="toggleSidebarMobile()"><span class="mobile-topbar-icon">☰</span><span class="mobile-topbar-brand">ALMA OS</span></div>
+<div id="sidebar-backdrop" onclick="fecharSidebarMobile()"></div>
 <div id="app">
   <div id="sidebar">
     <div class="brand">
@@ -881,7 +910,17 @@ function setTab(id){
   if(alvo && alvo.restrito && !podeVerAreaRestrita()) id = 'dashboard';
   if(activeTab==='financaspessoais' && id!=='financaspessoais') financasPessoaisDestrancada = false;
   activeTab = id; document.getElementById('page-title').textContent = TABS.find(t=>t.id===id).label; renderNav(); render();
+  fecharSidebarMobile();
 }
+/* Menu lateral retrátil no celular — no desktop essas classes não têm efeito nenhum (as regras só existem dentro da media query de tela pequena) */
+let sidebarMobileAberta = false;
+function aplicarEstadoSidebarMobile(){
+  document.getElementById('sidebar').classList.toggle('sidebar-aberta', sidebarMobileAberta);
+  document.getElementById('sidebar-backdrop').classList.toggle('visivel', sidebarMobileAberta);
+  document.body.classList.toggle('menu-mobile-aberto', sidebarMobileAberta);
+}
+function toggleSidebarMobile(){ sidebarMobileAberta = !sidebarMobileAberta; aplicarEstadoSidebarMobile(); }
+function fecharSidebarMobile(){ if(!sidebarMobileAberta) return; sidebarMobileAberta = false; aplicarEstadoSidebarMobile(); }
 
 /* ===================== MODAL GENÉRICO ===================== */
 let modalOnSave = null;
@@ -1533,11 +1572,11 @@ function renderMetas(){
     ${state.meta.produtos.map((p,pi)=>{
       const clientesProduto = getClientes().filter(c=>c.produto===p.nome);
       const faturamento = clientesProduto.reduce((a,c)=>a+Number(c.valor||0),0);
-      return `<tr class="arrastavel-item" draggable="true"
+      return `<tr class="arrastavel-item" draggable="true" data-arr-contexto="produtos" data-arr-extra="" data-arr-idx="${pi}"
         ondragstart="onDragStartOrdenar(event,'produtos',null,${pi})" ondragend="onDragEndOrdenar(event)"
         ondragover="onDragOverOrdenar(event,${pi})" ondragleave="onDragLeaveOrdenar(event)"
         ondrop="onDropOrdenar(event,'produtos',null,${pi})">
-        <td class="arrasta-alca">⠿</td><td>${escHtml(p.nome)}</td><td>${fmtBRL(p.preco)}</td><td>${clientesProduto.length}</td><td>${fmtBRL(faturamento)}</td><td>${escHtml(p.descricao)}</td><td><button class="btn ghost xs" onclick="editProduto('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delProduto('${p.id}')">Excluir</button></td></tr>`;
+        <td class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'produtos',null,${pi})">⠿</td><td>${escHtml(p.nome)}</td><td>${fmtBRL(p.preco)}</td><td>${clientesProduto.length}</td><td>${fmtBRL(faturamento)}</td><td>${escHtml(p.descricao)}</td><td><button class="btn ghost xs" onclick="editProduto('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delProduto('${p.id}')">Excluir</button></td></tr>`;
     }).join('')}
     </tbody></table>
   </div>`;
@@ -1652,11 +1691,11 @@ function renderCRM(){
     if(fu!==null){ fuTag = `<span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span>`; }
     const prob = probabilidadeFechamento(l);
     const probClasse = prob>=70? 'stage-won' : prob>=40? 'stage-proposal' : prob===0? 'stage-lost' : 'stage-new';
-    return `<tr class="arrastavel-item" draggable="true"
+    return `<tr class="arrastavel-item" draggable="true" data-arr-contexto="leads" data-arr-extra="" data-arr-idx="${li}"
       ondragstart="onDragStartOrdenar(event,'leads',null,${li})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${li})" ondragleave="onDragLeaveOrdenar(event)"
       ondrop="onDropOrdenar(event,'leads',null,${li})">
-      <td class="arrasta-alca">⠿</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(l.nome))}</span>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td><span class="tag ${probClasse}">${prob}%</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
+      <td class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'leads',null,${li})">⠿</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(l.nome))}</span>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td><span class="tag ${probClasse}">${prob}%</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
     <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.papeis.includes('cliente')? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
   }).join('');
   return `
@@ -1772,6 +1811,42 @@ const VISTAS_DERIVADAS = {
   clientes: {base:()=>state.pessoas, vista:()=>getClientes().filter(c=> clientesFilter==='todas' ? true : c.status===clientesFilter)},
   fpParcelamentos: {base:()=>financasPessoais.parcelamentos, vista:()=>parcelamentosEmAberto()}
 };
+/* Núcleo da reordenação — recebe índices de origem/destino explícitos, sem depender de nenhuma variável global. Reaproveitado tanto pelo arrastar do mouse (onDropOrdenar) quanto pelo arrastar por toque no celular (onTouchEndOrdenar), já que o gesto de toque não dispara os eventos nativos de drag do HTML5. */
+function executarReordenacao(contexto, extra, idxOrigem, idxDestino){
+  const vistaDef = VISTAS_DERIVADAS[contexto];
+  if(vistaDef){
+    const vista = vistaDef.vista();
+    const base = vistaDef.base();
+    const itemOrigem = vista[idxOrigem];
+    const itemDestino = vista[idxDestino];
+    if(itemOrigem && itemDestino){
+      const idxOrigemReal = base.findIndex(x=>x.id===itemOrigem.id);
+      if(idxOrigemReal>=0){
+        base.splice(idxOrigemReal,1);
+        let idxDestinoReal = base.findIndex(x=>x.id===itemDestino.id);
+        if(idxDestinoReal<0) idxDestinoReal = base.length;
+        else if(idxOrigem < idxDestino) idxDestinoReal += 1; /* arrastou pra baixo (posição maior na vista): entra depois do destino, igual ao mecanismo por índice simples */
+        base.splice(idxDestinoReal, 0, itemOrigem);
+      }
+    }
+  } else {
+    const arr = arrArrastavel(contexto, extra);
+    if(!arr) return;
+    const [item] = arr.splice(idxOrigem, 1);
+    arr.splice(idxDestino, 0, item);
+    /* rotina diária guarda os "concluído hoje" por índice (objeto {idx: bool}) — reordenar os itens precisa mover essas marcações junto, senão o check fica na posição errada até virar o dia */
+    if(contexto==='rotina' && extra==='diaria'){
+      const antigos = Object.assign({}, state.rotina.completedToday.items);
+      const ordemAntiga = Array.from({length: arr.length}, (_,i)=>i);
+      const [movidoIdx] = ordemAntiga.splice(idxOrigem,1);
+      ordemAntiga.splice(idxDestino,0,movidoIdx);
+      const novoMarcado = {};
+      ordemAntiga.forEach((origemIdx, novoIdx)=>{ if(antigos[origemIdx]) novoMarcado[novoIdx]=true; });
+      state.rotina.completedToday.items = novoMarcado;
+    }
+  }
+  save(); render();
+}
 let arrastoContexto=null, arrastoExtra=null, arrastoIdx=null;
 function onDragStartOrdenar(ev, contexto, extra, idx){
   arrastoContexto=contexto; arrastoExtra=extra; arrastoIdx=idx;
@@ -1790,41 +1865,44 @@ function onDropOrdenar(ev, contexto, extra, idx){
   ev.preventDefault();
   ev.currentTarget.classList.remove('dragover-topo','dragover-baixo');
   if(arrastoContexto!==contexto || String(arrastoExtra)!==String(extra) || arrastoIdx===null || arrastoIdx===idx){ arrastoIdx=null; return; }
-  const vistaDef = VISTAS_DERIVADAS[contexto];
-  if(vistaDef){
-    const vista = vistaDef.vista();
-    const base = vistaDef.base();
-    const itemOrigem = vista[arrastoIdx];
-    const itemDestino = vista[idx];
-    if(itemOrigem && itemDestino){
-      const idxOrigemReal = base.findIndex(x=>x.id===itemOrigem.id);
-      if(idxOrigemReal>=0){
-        base.splice(idxOrigemReal,1);
-        let idxDestinoReal = base.findIndex(x=>x.id===itemDestino.id);
-        if(idxDestinoReal<0) idxDestinoReal = base.length;
-        else if(arrastoIdx < idx) idxDestinoReal += 1; /* arrastou pra baixo (posição maior na vista): entra depois do destino, igual ao mecanismo por índice simples */
-        base.splice(idxDestinoReal, 0, itemOrigem);
-      }
-    }
-  } else {
-    const arr = arrArrastavel(contexto, extra);
-    if(!arr) return;
-    const [item] = arr.splice(arrastoIdx, 1);
-    arr.splice(idx, 0, item);
-    /* rotina diária guarda os "concluído hoje" por índice (objeto {idx: bool}) — reordenar os itens precisa mover essas marcações junto, senão o check fica na posição errada até virar o dia */
-    if(contexto==='rotina' && extra==='diaria'){
-      const antigos = Object.assign({}, state.rotina.completedToday.items);
-      const ordemAntiga = Array.from({length: arr.length}, (_,i)=>i);
-      const [movidoIdx] = ordemAntiga.splice(arrastoIdx,1);
-      ordemAntiga.splice(idx,0,movidoIdx);
-      const novoMarcado = {};
-      ordemAntiga.forEach((origemIdx, novoIdx)=>{ if(antigos[origemIdx]) novoMarcado[novoIdx]=true; });
-      state.rotina.completedToday.items = novoMarcado;
-    }
-  }
+  executarReordenacao(contexto, extra, arrastoIdx, idx);
   arrastoContexto=null; arrastoExtra=null; arrastoIdx=null;
-  save(); render();
 }
+/* Arrastar por TOQUE (celular) — o drag-and-drop nativo do HTML5 (ondragstart/ondrop acima) não dispara em navegadores mobile (Safari iOS, Chrome Android não suportam touch pra essa API). Reproduz o mesmo gesto manualmente: toca e segura a alça (⠿) pra "pegar" o item, arrasta o dedo, e o item por baixo do dedo (achado via elementFromPoint, já que o touchmove continua "preso" ao elemento onde o toque começou) vira o alvo. Cada linha/card arrastável carrega data-arr-contexto/extra/idx pra identificar o que está por baixo do dedo a qualquer momento. */
+let toqueArrasto = null;
+function onTouchStartOrdenar(ev, contexto, extra, idx){
+  ev.preventDefault();
+  const el = ev.currentTarget.closest('.arrastavel-item');
+  toqueArrasto = {contexto, extra: (extra===null||extra===undefined)?'':String(extra), idxOrigem: idx, elOrigem: el, idxAlvo: null};
+  if(el) el.classList.add('arrastando');
+}
+function onTouchMoveOrdenar(ev){
+  if(!toqueArrasto) return;
+  ev.preventDefault();
+  const t = ev.touches[0];
+  const elSob = document.elementFromPoint(t.clientX, t.clientY);
+  const itemAlvo = elSob ? elSob.closest('.arrastavel-item') : null;
+  document.querySelectorAll('.dragover-topo,.dragover-baixo').forEach(function(el){ el.classList.remove('dragover-topo','dragover-baixo'); });
+  if(itemAlvo && itemAlvo!==toqueArrasto.elOrigem && itemAlvo.dataset.arrContexto===toqueArrasto.contexto && (itemAlvo.dataset.arrExtra||'')===toqueArrasto.extra){
+    const idxAlvo = Number(itemAlvo.dataset.arrIdx);
+    itemAlvo.classList.toggle('dragover-topo', idxAlvo < toqueArrasto.idxOrigem);
+    itemAlvo.classList.toggle('dragover-baixo', idxAlvo > toqueArrasto.idxOrigem);
+    toqueArrasto.idxAlvo = idxAlvo;
+  } else {
+    toqueArrasto.idxAlvo = null;
+  }
+}
+document.addEventListener('touchmove', onTouchMoveOrdenar, {passive:false});
+function onTouchEndOrdenar(){
+  if(!toqueArrasto) return;
+  document.querySelectorAll('.dragover-topo,.dragover-baixo').forEach(function(el){ el.classList.remove('dragover-topo','dragover-baixo'); });
+  if(toqueArrasto.elOrigem) toqueArrasto.elOrigem.classList.remove('arrastando');
+  if(toqueArrasto.idxAlvo!==null && toqueArrasto.idxAlvo!==toqueArrasto.idxOrigem){
+    executarReordenacao(toqueArrasto.contexto, toqueArrasto.extra===''?null:toqueArrasto.extra, toqueArrasto.idxOrigem, toqueArrasto.idxAlvo);
+  }
+  toqueArrasto = null;
+}
+document.addEventListener('touchend', onTouchEndOrdenar);
 function leadFields(){
   return [
     {key:'nome', label:'Nome', type:'text', required:true},
@@ -2073,11 +2151,11 @@ function renderClientes(){
     const checklist = c.checklist||[];
     const done = checklist.filter(i=>i.done).length;
     const progresso = checklist.length? `${done}/${checklist.length}` : '—';
-    return `<tr class="arrastavel-item" draggable="true"
+    return `<tr class="arrastavel-item" draggable="true" data-arr-contexto="clientes" data-arr-extra="" data-arr-idx="${ci}"
       ondragstart="onDragStartOrdenar(event,'clientes',null,${ci})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
       ondrop="onDropOrdenar(event,'clientes',null,${ci})">
-      <td class="arrasta-alca">⠿</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(c.nome))}</span>${escHtml(c.nome)}</td><td>${escHtml(c.produto)}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${escHtml(c.status)}</span></td><td>${remTag}</td><td>${progresso}</td>
+      <td class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'clientes',null,${ci})">⠿</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(c.nome))}</span>${escHtml(c.nome)}</td><td>${escHtml(c.produto)}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${escHtml(c.status)}</span></td><td>${remTag}</td><td>${progresso}</td>
     <td><button class="btn ghost xs" onclick="abrirChecklist('${c.id}')">Ficha</button> <button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCliente('${c.id}')">Excluir</button></td></tr>`;
   }).join('');
   return `
@@ -2203,11 +2281,11 @@ function renderChecklistBloco(colName, itemId, checklist, titulo){
     <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
     <div class="small-muted" style="margin-top:6px;">${done}/${checklist.length} etapas concluídas (${pct}%)</div>
     <div style="margin-top:16px;">
-    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item arrastavel-item ${item.done?'done':''}" style="align-items:flex-start;" draggable="true"
+    ${checklist.length? checklist.map((item,idx)=>`<div class="checklist-item arrastavel-item ${item.done?'done':''}" style="align-items:flex-start;" draggable="true" data-arr-contexto="checklist" data-arr-extra="${colName}|${itemId}" data-arr-idx="${idx}"
       ondragstart="onDragStartOrdenar(event,'checklist','${colName}|${itemId}',${idx})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${idx})" ondragleave="onDragLeaveOrdenar(event)"
       ondrop="onDropOrdenar(event,'checklist','${colName}|${itemId}',${idx})">
-      <span class="arrasta-alca">⠿</span>
+      <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'checklist','${colName}|${itemId}',${idx})">⠿</span>
       <input type="checkbox" ${item.done?'checked':''} onchange="toggleChecklistItem('${colName}','${itemId}',${idx})" style="margin-top:3px;">
       <div style="flex:1;"><span>${escHtml(item.step)}</span>${(colName==='pessoas' && item.notaPreparo)? `<div class="small-muted" style="font-style:italic;margin-top:2px;">Preparo: ${escHtml(item.notaPreparo)}</div>` : ''}</div>
       ${colName==='pessoas'? `<button class="btn ghost xs" onclick="editarNotaPreparoChecklist('${colName}','${itemId}',${idx})">${item.notaPreparo?'Editar preparo':'+ Preparo'}</button>` : ''}
@@ -2331,11 +2409,11 @@ function renderRotina(){
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Checklist ${subtabs.find(s=>s[0]===rotinaSubtab)[1]}</h3><button class="btn gold xs" onclick="addRotinaItem()">+ Item</button></div>
     ${items.map((it,idx)=>{
       const done = isDaily && state.rotina.completedToday.items[idx];
-      return `<div class="checklist-item arrastavel-item ${done?'done':''}" draggable="true"
+      return `<div class="checklist-item arrastavel-item ${done?'done':''}" draggable="true" data-arr-contexto="rotina" data-arr-extra="${rotinaSubtab}" data-arr-idx="${idx}"
         ondragstart="onDragStartOrdenar(event,'rotina','${rotinaSubtab}',${idx})" ondragend="onDragEndOrdenar(event)"
         ondragover="onDragOverOrdenar(event,${idx})" ondragleave="onDragLeaveOrdenar(event)"
         ondrop="onDropOrdenar(event,'rotina','${rotinaSubtab}',${idx})">
-        <span class="arrasta-alca">⠿</span>${isDaily?`<input type="checkbox" ${done?'checked':''} onchange="toggleRotinaItem(${idx})">`:'<span style="width:16px;"></span>'}<span style="flex:1;">${it}</span><button class="btn ghost xs" onclick="delRotinaItem(${idx})">Excluir</button></div>`;
+        <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'rotina','${rotinaSubtab}',${idx})">⠿</span>${isDaily?`<input type="checkbox" ${done?'checked':''} onchange="toggleRotinaItem(${idx})">`:'<span style="width:16px;"></span>'}<span style="flex:1;">${it}</span><button class="btn ghost xs" onclick="delRotinaItem(${idx})">Excluir</button></div>`;
     }).join('')}
   </div>`;
 }
@@ -2388,18 +2466,18 @@ function renderScripts(){
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Base de scripts</h3><button class="btn gold xs" onclick="addCategoriaScript()">+ Categoria</button></div>
     <div class="note" style="margin-top:0;">Arraste pelo ⠿ pra reordenar categorias e scripts do jeito que preferir.</div>
     ${state.scripts.categorias.map((cat,ci)=>`
-      <div class="arrastavel-item" style="margin-bottom:18px;align-items:stretch;" draggable="true"
+      <div class="arrastavel-item" style="margin-bottom:18px;align-items:stretch;" draggable="true" data-arr-contexto="scriptsCategorias" data-arr-extra="" data-arr-idx="${ci}"
         ondragstart="onDragStartOrdenar(event,'scriptsCategorias',null,${ci})" ondragend="onDragEndOrdenar(event)"
         ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
         ondrop="onDropOrdenar(event,'scriptsCategorias',null,${ci})">
-        <span class="arrasta-alca">⠿</span>
+        <span class="arrasta-alca" ontouchstart="event.stopPropagation(); onTouchStartOrdenar(event,'scriptsCategorias',null,${ci})">⠿</span>
         <div style="flex:1;">
           <div class="toolbar" style="margin-bottom:8px;"><b style="text-transform:uppercase;font-size:12px;letter-spacing:.5px;color:var(--gold);">${escHtml(cat.nome)}</b><button class="btn ghost xs" onclick="addScriptItem(${ci})">+ Script</button></div>
-          ${cat.itens.map((it,ii)=>`<div class="script-card arrastavel-item" draggable="true"
+          ${cat.itens.map((it,ii)=>`<div class="script-card arrastavel-item" draggable="true" data-arr-contexto="scriptsItens" data-arr-extra="${ci}" data-arr-idx="${ii}"
             ondragstart="event.stopPropagation(); onDragStartOrdenar(event,'scriptsItens',${ci},${ii})" ondragend="event.stopPropagation(); onDragEndOrdenar(event)"
             ondragover="event.stopPropagation(); onDragOverOrdenar(event,${ii})" ondragleave="onDragLeaveOrdenar(event)"
             ondrop="event.stopPropagation(); onDropOrdenar(event,'scriptsItens',${ci},${ii})">
-            <span class="arrasta-alca">⠿</span>
+            <span class="arrasta-alca" ontouchstart="event.stopPropagation(); onTouchStartOrdenar(event,'scriptsItens',${ci},${ii})">⠿</span>
             <div style="flex:1;"><h4>${escHtml(it.titulo)}</h4><pre>${escHtml(it.conteudo)}</pre>
             <button class="btn ghost xs" onclick="copiarScript(${ci},${ii})">Copiar</button>
             <button class="btn ghost xs" onclick="editScriptItem(${ci},${ii})">Editar</button>
@@ -2509,16 +2587,16 @@ function renderDRE(entradas,saidas,lucro,margem,saidasF){
 function renderCategoriasFin(){
   return `<div class="note">Defina aqui os itens de despesa da sua empresa com um valor de referência (útil pro planejamento). Os lançamentos reais de cada mês continuam na aba "Fluxo de Caixa".</div>
   <div class="grid grid-2">
-  <div><h3 class="section-title">Despesas Fixas</h3>${state.financeiro.categoriasFixas.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true"
+  <div><h3 class="section-title">Despesas Fixas</h3>${state.financeiro.categoriasFixas.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true" data-arr-contexto="categoriaFinFixas" data-arr-extra="" data-arr-idx="${ci}"
     ondragstart="onDragStartOrdenar(event,'categoriaFinFixas',null,${ci})" ondragend="onDragEndOrdenar(event)"
     ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
     ondrop="onDropOrdenar(event,'categoriaFinFixas',null,${ci})">
-    <span class="arrasta-alca">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><b style="margin-right:10px;">${fmtBRL(c.valor)}</b><button class="btn ghost xs" onclick="editCategoriaFin('categoriasFixas','${c.id}')">Editar</button> <button class="btn ghost xs" onclick="delCategoriaFin('categoriasFixas','${c.id}')">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasFixas')">+ Categoria fixa</button></div>
-  <div><h3 class="section-title">Despesas Variáveis</h3>${state.financeiro.categoriasVariaveis.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true"
+    <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'categoriaFinFixas',null,${ci})">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><b style="margin-right:10px;">${fmtBRL(c.valor)}</b><button class="btn ghost xs" onclick="editCategoriaFin('categoriasFixas','${c.id}')">Editar</button> <button class="btn ghost xs" onclick="delCategoriaFin('categoriasFixas','${c.id}')">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasFixas')">+ Categoria fixa</button></div>
+  <div><h3 class="section-title">Despesas Variáveis</h3>${state.financeiro.categoriasVariaveis.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true" data-arr-contexto="categoriaFinVariaveis" data-arr-extra="" data-arr-idx="${ci}"
     ondragstart="onDragStartOrdenar(event,'categoriaFinVariaveis',null,${ci})" ondragend="onDragEndOrdenar(event)"
     ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
     ondrop="onDropOrdenar(event,'categoriaFinVariaveis',null,${ci})">
-    <span class="arrasta-alca">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><b style="margin-right:10px;">${fmtBRL(c.valor)}</b><button class="btn ghost xs" onclick="editCategoriaFin('categoriasVariaveis','${c.id}')">Editar</button> <button class="btn ghost xs" onclick="delCategoriaFin('categoriasVariaveis','${c.id}')">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasVariaveis')">+ Categoria variável</button></div>
+    <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'categoriaFinVariaveis',null,${ci})">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><b style="margin-right:10px;">${fmtBRL(c.valor)}</b><button class="btn ghost xs" onclick="editCategoriaFin('categoriasVariaveis','${c.id}')">Editar</button> <button class="btn ghost xs" onclick="delCategoriaFin('categoriasVariaveis','${c.id}')">Excluir</button></div>`).join('')}<button class="btn ghost xs" style="margin-top:8px;" onclick="addCategoriaFin('categoriasVariaveis')">+ Categoria variável</button></div>
   </div>`;
 }
 function categoriaFinFields(){ return [{key:'nome',label:'Nome',type:'text',required:true},{key:'valor',label:'Valor de referência (R$)',type:'number'}]; }
@@ -2639,11 +2717,11 @@ function renderConteudo(){
   <div class="note">Pilares de conteúdo sugeridos: ${state.conteudo.pilares.join(' · ')}. Priorize acompanhar <b>salvamentos</b> e <b>compartilhamentos</b> — são os sinais mais fortes de valor percebido pelo algoritmo hoje.</div>
   <div class="card">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Posts registrados</h3><button class="btn gold xs" onclick="addPost()">+ Post</button></div>
-    ${posts.length? `<table><thead><tr><th></th><th>Data</th><th>Plataforma</th><th>Formato</th><th>Pilar</th><th>Alcance</th><th>Salvos</th><th>Compart.</th><th>Comentários</th><th>Cliques link</th><th></th></tr></thead><tbody>${posts.map((p,pi)=>`<tr class="arrastavel-item" draggable="true"
+    ${posts.length? `<table><thead><tr><th></th><th>Data</th><th>Plataforma</th><th>Formato</th><th>Pilar</th><th>Alcance</th><th>Salvos</th><th>Compart.</th><th>Comentários</th><th>Cliques link</th><th></th></tr></thead><tbody>${posts.map((p,pi)=>`<tr class="arrastavel-item" draggable="true" data-arr-contexto="posts" data-arr-extra="" data-arr-idx="${pi}"
       ondragstart="onDragStartOrdenar(event,'posts',null,${pi})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${pi})" ondragleave="onDragLeaveOrdenar(event)"
       ondrop="onDropOrdenar(event,'posts',null,${pi})">
-      <td class="arrasta-alca">⠿</td><td>${fmtDate(p.data)}</td><td>${p.plataforma}</td><td>${p.formato}</td><td>${p.pilar||''}</td><td>${p.alcance||0}</td><td>${p.salvamentos||0}</td><td>${p.compartilhamentos||0}</td><td>${p.comentarios||0}</td><td>${p.cliques||0}</td><td><button class="btn ghost xs" onclick="editPost('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delPost('${p.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:emptyState('Nenhum post registrado ainda.', '<button class="btn gold xs" onclick="addPost()">+ Post</button>')}
+      <td class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'posts',null,${pi})">⠿</td><td>${fmtDate(p.data)}</td><td>${p.plataforma}</td><td>${p.formato}</td><td>${p.pilar||''}</td><td>${p.alcance||0}</td><td>${p.salvamentos||0}</td><td>${p.compartilhamentos||0}</td><td>${p.comentarios||0}</td><td>${p.cliques||0}</td><td><button class="btn ghost xs" onclick="editPost('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delPost('${p.id}')">Excluir</button></td></tr>`).join('')}</tbody></table>`:emptyState('Nenhum post registrado ainda.', '<button class="btn gold xs" onclick="addPost()">+ Post</button>')}
   </div>`;
 }
 function postFields(){ return [
@@ -2900,46 +2978,46 @@ function renderFinancasPessoais(){
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Cartões de Crédito</h3><button class="btn gold xs" onclick="addCartao()">+ Cartão</button></div>
-    ${financasPessoais.cartoes.length? financasPessoais.cartoes.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true"
+    ${financasPessoais.cartoes.length? financasPessoais.cartoes.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true" data-arr-contexto="fpCartoes" data-arr-extra="" data-arr-idx="${ci}"
       ondragstart="onDragStartOrdenar(event,'fpCartoes',null,${ci})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
       ondrop="onDropOrdenar(event,'fpCartoes',null,${ci})">
-      <span class="arrasta-alca">⠿</span><span style="flex:1;">${escHtml(c.nome)}${c.banco?' — '+escHtml(c.banco):''}${c.diaVencimento?' · vence dia '+escHtml(String(c.diaVencimento)):''}</span><b>${fmtBRL(faturaCartaoDoMes(c.id, mesAtual))}</b><span class="small-muted" style="margin:0 8px;">fatura deste mês</span><button class="btn ghost xs" onclick="editCartao('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCartao('${c.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum cartão cadastrado ainda.', '<button class="btn gold xs" onclick="addCartao()">+ Cartão</button>')}
+      <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'fpCartoes',null,${ci})">⠿</span><span style="flex:1;">${escHtml(c.nome)}${c.banco?' — '+escHtml(c.banco):''}${c.diaVencimento?' · vence dia '+escHtml(String(c.diaVencimento)):''}</span><b>${fmtBRL(faturaCartaoDoMes(c.id, mesAtual))}</b><span class="small-muted" style="margin:0 8px;">fatura deste mês</span><button class="btn ghost xs" onclick="editCartao('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCartao('${c.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum cartão cadastrado ainda.', '<button class="btn gold xs" onclick="addCartao()">+ Cartão</button>')}
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Parcelamentos em aberto</h3><button class="btn gold xs" onclick="addParcelamento()">+ Parcelamento</button></div>
-    ${parcelasAtivas.length? `<table><thead><tr><th></th><th>Descrição</th><th>Cartão</th><th>Parcela</th><th>Valor da parcela</th><th>Restam</th><th></th></tr></thead><tbody>${parcelasAtivas.map((p,pi)=>{ const cartao = financasPessoais.cartoes.find(c=>c.id===p.cartaoId); return `<tr class="arrastavel-item" draggable="true"
+    ${parcelasAtivas.length? `<table><thead><tr><th></th><th>Descrição</th><th>Cartão</th><th>Parcela</th><th>Valor da parcela</th><th>Restam</th><th></th></tr></thead><tbody>${parcelasAtivas.map((p,pi)=>{ const cartao = financasPessoais.cartoes.find(c=>c.id===p.cartaoId); return `<tr class="arrastavel-item" draggable="true" data-arr-contexto="fpParcelamentos" data-arr-extra="" data-arr-idx="${pi}"
       ondragstart="onDragStartOrdenar(event,'fpParcelamentos',null,${pi})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${pi})" ondragleave="onDragLeaveOrdenar(event)"
       ondrop="onDropOrdenar(event,'fpParcelamentos',null,${pi})">
-      <td class="arrasta-alca">⠿</td><td>${escHtml(p.descricao)}</td><td>${cartao?escHtml(cartao.nome):'—'}</td><td>${Math.min(p.parcelasPagas+1,p.numParcelas)}/${p.numParcelas}</td><td>${fmtBRL(valorParcela(p))}</td><td>${p.parcelasRestantes}</td><td><button class="btn ghost xs" onclick="editParcelamento('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delParcelamento('${p.id}')">Excluir</button></td></tr>`; }).join('')}</tbody></table>` : emptyState('Nenhum parcelamento em aberto.', '<button class="btn gold xs" onclick="addParcelamento()">+ Parcelamento</button>')}
+      <td class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'fpParcelamentos',null,${pi})">⠿</td><td>${escHtml(p.descricao)}</td><td>${cartao?escHtml(cartao.nome):'—'}</td><td>${Math.min(p.parcelasPagas+1,p.numParcelas)}/${p.numParcelas}</td><td>${fmtBRL(valorParcela(p))}</td><td>${p.parcelasRestantes}</td><td><button class="btn ghost xs" onclick="editParcelamento('${p.id}')">Editar</button> <button class="btn danger xs" onclick="delParcelamento('${p.id}')">Excluir</button></td></tr>`; }).join('')}</tbody></table>` : emptyState('Nenhum parcelamento em aberto.', '<button class="btn gold xs" onclick="addParcelamento()">+ Parcelamento</button>')}
   </div>
   <div class="card" style="margin-top:16px;">
     <div class="toolbar"><h3 class="section-title" style="margin:0;">Bancos</h3><button class="btn gold xs" onclick="addBanco()">+ Banco</button></div>
-    ${financasPessoais.bancos.length? financasPessoais.bancos.map((b,bi)=>`<div class="checklist-item arrastavel-item" draggable="true"
+    ${financasPessoais.bancos.length? financasPessoais.bancos.map((b,bi)=>`<div class="checklist-item arrastavel-item" draggable="true" data-arr-contexto="fpBancos" data-arr-extra="" data-arr-idx="${bi}"
       ondragstart="onDragStartOrdenar(event,'fpBancos',null,${bi})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${bi})" ondragleave="onDragLeaveOrdenar(event)"
       ondrop="onDropOrdenar(event,'fpBancos',null,${bi})">
-      <span class="arrasta-alca">⠿</span><span style="flex:1;">${escHtml(b.nome)}</span><span class="small-muted" style="margin-right:10px;">${escHtml(b.tipo)||'—'}</span><button class="btn ghost xs" onclick="editBanco('${b.id}')">Editar</button> <button class="btn danger xs" onclick="delBanco('${b.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum banco cadastrado ainda.', '<button class="btn gold xs" onclick="addBanco()">+ Banco</button>')}
+      <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'fpBancos',null,${bi})">⠿</span><span style="flex:1;">${escHtml(b.nome)}</span><span class="small-muted" style="margin-right:10px;">${escHtml(b.tipo)||'—'}</span><button class="btn ghost xs" onclick="editBanco('${b.id}')">Editar</button> <button class="btn danger xs" onclick="delBanco('${b.id}')">Excluir</button></div>`).join('') : emptyState('Nenhum banco cadastrado ainda.', '<button class="btn gold xs" onclick="addBanco()">+ Banco</button>')}
   </div>
   <div class="card" style="margin-top:16px;">
     <h3 class="section-title">Categorias de gasto</h3>
     <div class="grid grid-2">
       <div>
         <div class="toolbar"><span class="small-muted" style="font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Fixas</span><button class="btn ghost xs" onclick="addCategoriaPessoal('categoriasFixas')">+</button></div>
-        ${financasPessoais.categoriasFixas.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true"
+        ${financasPessoais.categoriasFixas.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true" data-arr-contexto="fpCategoriaFixas" data-arr-extra="" data-arr-idx="${ci}"
           ondragstart="onDragStartOrdenar(event,'fpCategoriaFixas',null,${ci})" ondragend="onDragEndOrdenar(event)"
           ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
           ondrop="onDropOrdenar(event,'fpCategoriaFixas',null,${ci})">
-          <span class="arrasta-alca">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><button class="btn ghost xs" onclick="delCategoriaPessoal('categoriasFixas','${c.id}')">Excluir</button></div>`).join('')}
+          <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'fpCategoriaFixas',null,${ci})">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><button class="btn ghost xs" onclick="delCategoriaPessoal('categoriasFixas','${c.id}')">Excluir</button></div>`).join('')}
       </div>
       <div>
         <div class="toolbar"><span class="small-muted" style="font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Variáveis</span><button class="btn ghost xs" onclick="addCategoriaPessoal('categoriasVariaveis')">+</button></div>
-        ${financasPessoais.categoriasVariaveis.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true"
+        ${financasPessoais.categoriasVariaveis.map((c,ci)=>`<div class="checklist-item arrastavel-item" draggable="true" data-arr-contexto="fpCategoriaVariaveis" data-arr-extra="" data-arr-idx="${ci}"
           ondragstart="onDragStartOrdenar(event,'fpCategoriaVariaveis',null,${ci})" ondragend="onDragEndOrdenar(event)"
           ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
           ondrop="onDropOrdenar(event,'fpCategoriaVariaveis',null,${ci})">
-          <span class="arrasta-alca">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><button class="btn ghost xs" onclick="delCategoriaPessoal('categoriasVariaveis','${c.id}')">Excluir</button></div>`).join('')}
+          <span class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'fpCategoriaVariaveis',null,${ci})">⠿</span><span style="flex:1;">${escHtml(c.nome)}</span><button class="btn ghost xs" onclick="delCategoriaPessoal('categoriasVariaveis','${c.id}')">Excluir</button></div>`).join('')}
       </div>
     </div>
   </div>`;
