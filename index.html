@@ -865,6 +865,504 @@ function pushToCloudDebounced(){
   }, 1200);
 }
 
+/* ===================== FORMULÁRIO DE APLICAÇÃO (projeto Firebase SEPARADO, só recebe candidaturas do formulário público) =====================
+   Deliberadamente isolado do resto da nuvem (workspace principal): as regras de segurança do Firestore só protegem por "quem tem a configuração",
+   e a configuração de um formulário público fica visível pra qualquer visitante (é assim que Firebase funciona, não é um descuido). Por isso esse
+   formulário usa um projeto Firebase À PARTE — mesmo que a config vaze, o máximo exposto são as candidaturas de outras pessoas, nunca leads/clientes/financeiro. */
+const FORM_CLOUD_CONFIG_KEY = 'alma_os_form_cloud_config';
+let formCloudDb = null, formCloudStatus = 'disconnected', formAplicacoesCache = [], formRascunhosCache = [];
+function loadFormCloudConfig(){ try{ const raw = localStorage.getItem(FORM_CLOUD_CONFIG_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+function saveFormCloudConfig(cfg){ localStorage.setItem(FORM_CLOUD_CONFIG_KEY, JSON.stringify(cfg)); }
+function clearFormCloudConfig(){ localStorage.removeItem(FORM_CLOUD_CONFIG_KEY); formCloudDb=null; formCloudStatus='disconnected'; formAplicacoesCache=[]; formRascunhosCache=[]; }
+function initFormCloudIfConfigured(){ const cfg = loadFormCloudConfig(); if(cfg) connectFormCloud(cfg); }
+/* O formulário público grava com login anônimo (só consegue CRIAR, nunca ler). Pra ler/apagar as candidaturas aqui dentro, ela precisa
+   de um login de verdade (e-mail/senha) — sem isso as regras do Firestore não têm como diferenciar "ela" de "qualquer visitante que enviou
+   o formulário", e as respostas ficariam visíveis entre si. Sessão de login fica persistida pelo próprio Firebase (não precisa repetir toda hora). */
+function connectFormCloud(cfg, email, senha){
+  if(typeof firebase === 'undefined'){ mostrarToast('Não foi possível carregar o Firebase — verifique sua conexão com a internet e tente novamente.', 'erro'); return; }
+  try{
+    formCloudStatus = 'connecting';
+    let app = (firebase.apps||[]).find(a=>a.name==='formApp');
+    if(!app) app = firebase.initializeApp(cfg.firebaseConfig, 'formApp');
+    formCloudDb = app.firestore();
+    const aoLogar = ()=>{ formCloudStatus = 'connected'; saveFormCloudConfig(cfg); carregarAplicacoes(); carregarRascunhos(); };
+    if(email && senha){
+      app.auth().signInWithEmailAndPassword(email, senha).then(aoLogar)
+        .catch(err=>{ formCloudStatus='precisa-login'; mostrarToast('E-mail ou senha incorretos: '+err.message, 'erro'); render(); });
+    } else {
+      app.auth().onAuthStateChanged(user=>{
+        if(user && !user.isAnonymous) aoLogar();
+        else if(formCloudStatus!=='connected'){ formCloudStatus='precisa-login'; render(); }
+      });
+    }
+  }catch(e){ formCloudStatus='error'; mostrarToast('Erro ao conectar: '+e.message, 'erro'); render(); }
+}
+function carregarAplicacoes(){
+  if(!formCloudDb) return;
+  formCloudDb.collection('aplicacoes').orderBy('criadoEm','desc').get().then(snap=>{
+    formAplicacoesCache = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    render();
+  }).catch(err=>{ console.error('Falha ao carregar aplicações', err); mostrarToast('Erro ao buscar aplicações: '+err.message, 'erro'); });
+}
+/* Rascunhos: gente que começou a preencher o formulário público mas não chegou a enviar. O formulário salva sozinho (ao trocar de etapa, ao digitar,
+   e ao sair da página) num documento por sessão de visita — sempre atualizando o MESMO documento, não criando um novo a cada campo digitado. */
+function carregarRascunhos(){
+  if(!formCloudDb) return;
+  formCloudDb.collection('rascunhos').orderBy('atualizadoEm','desc').get().then(snap=>{
+    formRascunhosCache = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    render();
+  }).catch(err=>{ console.error('Falha ao carregar rascunhos', err); });
+}
+function handleConectarFormCloud(){
+  const raw = document.getElementById('formCloudConfigInput').value.trim();
+  const email = document.getElementById('formCloudEmailInput').value.trim();
+  const senha = document.getElementById('formCloudSenhaInput').value;
+  if(!raw){ mostrarToast('Cole a configuração do Firebase.', 'erro'); return; }
+  if(!email || !senha){ mostrarToast('Preencha o e-mail e a senha da sua conta de acesso (criada em Authentication → Users).', 'erro'); return; }
+  let firebaseConfig;
+  try{ firebaseConfig = parseFirebaseConfigInput(raw); }catch(e){ mostrarToast('Não consegui entender a configuração colada. Confira se copiou o objeto inteiro (incluindo as chaves { }).', 'erro'); return; }
+  if(!firebaseConfig || !firebaseConfig.apiKey){ mostrarToast('A configuração parece incompleta — confira se inclui apiKey, authDomain, projectId etc.', 'erro'); return; }
+  connectFormCloud({firebaseConfig}, email, senha);
+}
+function handleLoginFormCloud(){
+  const cfg = loadFormCloudConfig();
+  if(!cfg){ mostrarToast('Configuração perdida — reconecte do zero.', 'erro'); return; }
+  const email = document.getElementById('formCloudEmailInput').value.trim();
+  const senha = document.getElementById('formCloudSenhaInput').value;
+  if(!email || !senha){ mostrarToast('Preencha o e-mail e a senha.', 'erro'); return; }
+  connectFormCloud(cfg, email, senha);
+}
+function handleDesconectarFormCloud(){
+  confirmarAcao('Desconectar o formulário? O formulário público já baixado continua recebendo respostas normalmente — só o sistema para de mostrar elas aqui até você entrar de novo.', ()=>{
+    const app = (firebase.apps||[]).find(a=>a.name==='formApp');
+    if(app) app.auth().signOut();
+    clearFormCloudConfig(); render();
+  }, {perigo:true, textoConfirmar:'Desconectar'});
+}
+/* Converte uma candidatura (ou um rascunho de quem começou e não terminou) em lead de verdade no CRM — nunca automático, sempre com ela
+   revisando e clicando. "colecao" identifica de onde veio: 'aplicacoes' (padrão, formulário enviado) ou 'rascunhos' (formulário abandonado
+   no meio) — os campos que faltarem no rascunho simplesmente ficam vazios no lead, sem quebrar nada. */
+function converterAplicacaoEmLead(id, colecao){
+  colecao = colecao || 'aplicacoes';
+  const cache = colecao==='rascunhos' ? formRascunhosCache : formAplicacoesCache;
+  const ap = cache.find(a=>a.id===id);
+  if(!ap) return;
+  const faixaValor = {'De R$2.000 a R$3.000':2500, 'De R$3.000 a R$5.000':4000, 'De R$7.000 a R$12.000':9500}[ap.disponibilidadeInvestimento] || 0;
+  const motivosTexto = Array.isArray(ap.motivos) ? ap.motivos.map(m=>'• '+m).join('\n') : '';
+  const dataCriacao = ap.criadoEm ? new Date(ap.criadoEm).toISOString().slice(0,10) : todayStr();
+  const notasPartes = [
+    ap.motivoAgora ? 'O que fez procurar agora: '+ap.motivoAgora : '',
+    ap.comoQuerSerVista ? 'Como quer ser vista pelos clientes/pacientes: '+ap.comoQuerSerVista : '',
+    ap.jaInvestiuAntes ? 'Já investiu em imagem antes: '+ap.jaInvestiuAntes : '',
+    ap.disponibilidadeInvestimento ? 'Disponibilidade de investimento: '+ap.disponibilidadeInvestimento : '',
+    colecao==='rascunhos' ? 'Obs.: ela não chegou a enviar o formulário — preencheu até a etapa '+(ap.etapaAlcancada||1)+' de 5 e parou.' : ''
+  ].filter(Boolean).join('\n\n');
+  const nova = {
+    id: uid(), papeis:['lead'], historico:[],
+    nome: ap.nome||'', contato: ap.whatsapp||'', dataCriacao, origem:'Formulário',
+    estagio: state.crm.stages[0], temperatura: colecao==='rascunhos' ? 'Morna' : 'Quente', valorEstimado: faixaValor,
+    profissao: ap.areaAtuacao||'', cidade: ap.cidade||'', redesSociais: ap.instagram||'',
+    dores: motivosTexto, objetivos: ap.naoPodeFaltar||'', notas: notasPartes
+  };
+  nova.historico.push({id:uid(), data:dataCriacao, tipo:'Mudança de status', nota: colecao==='rascunhos' ? 'Lead criada a partir de um formulário iniciado (não finalizado).' : 'Lead criada a partir do formulário de aplicação.', autor:getUsuarioAtual()||''});
+  state.pessoas.push(nova); save();
+  descartarAplicacao(id, colecao, true);
+  mostrarToast('Aplicação virou lead!');
+  abrirFicha(nova.id);
+}
+function descartarAplicacao(id, colecao, silencioso){
+  colecao = colecao || 'aplicacoes';
+  const acao = ()=>{
+    if(formCloudDb) formCloudDb.collection(colecao).doc(id).delete().catch(err=>console.error('Falha ao remover '+colecao, err));
+    if(colecao==='rascunhos') formRascunhosCache = formRascunhosCache.filter(a=>a.id!==id);
+    else formAplicacoesCache = formAplicacoesCache.filter(a=>a.id!==id);
+    render();
+  };
+  if(silencioso){ acao(); return; }
+  confirmarAcao(colecao==='rascunhos' ? 'Descartar este rascunho sem virar lead?' : 'Descartar esta aplicação sem virar lead?', acao, {perigo:true, textoConfirmar:'Descartar'});
+}
+function baixarFormularioPublico(){
+  const cfg = loadFormCloudConfig();
+  if(!cfg){ mostrarToast('Conecte o formulário primeiro.', 'erro'); return; }
+  const html = gerarHtmlFormularioPublico(cfg.firebaseConfig);
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'aplicacao-metodo-alma.html';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+/* Página pública standalone (arquivo separado, pra ela subir no GitHub e linkar na bio). Guardada como template com um marcador de texto (__FIREBASE_CONFIG__) em vez de interpolação de verdade, pra não misturar a sintaxe de template do sistema com o script gerado dentro dela. */
+const FORM_PUBLICO_TEMPLATE = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Aplicação — Método ALMA®</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Paleta oficial da identidade visual (Janaína Bílibio / Método ALMA®) */
+  :root{--bg:#F7F3ED;--ink:#2C3C3C;--ink-soft:#6B7373;--accent:#A17B7E;--blush:#F3E7E9;--gold:#C8A96B;--line:#E4D9D6;}
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Quicksand',-apple-system,BlinkMacSystemFont,Arial,sans-serif;font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;}
+  .page{max-width:600px;margin:0 auto;padding:calc(52px + env(safe-area-inset-top)) 24px calc(80px + env(safe-area-inset-bottom));}
+
+  .intro{text-align:center;margin-bottom:48px;}
+  .monograma{margin:0 0 22px;}
+  .marca-nome{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:19px;letter-spacing:.08em;color:var(--ink);margin:0 0 6px;}
+  .marca-tagline{font-size:10.5px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 26px;}
+  .eyebrow{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);margin:0 0 16px;font-weight:600;}
+  .intro h1{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:clamp(25px,6vw,32px);line-height:1.28;margin:0 0 20px;letter-spacing:.005em;}
+  .lead{font-size:15px;color:var(--ink-soft);line-height:1.8;max-width:420px;margin:0 auto 18px;}
+  .meta{font-size:11.5px;color:var(--ink-soft);letter-spacing:.08em;margin:0;text-transform:uppercase;opacity:.85;}
+
+  .progress{margin-bottom:44px;}
+  .progress-track{height:1px;background:var(--line);position:relative;margin-bottom:16px;}
+  .progress-fill{position:absolute;top:-1px;left:0;height:2px;background:var(--accent);width:0%;transition:width .45s ease;}
+  .progress-steps{display:flex;justify-content:space-between;}
+  .progress-step{font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;letter-spacing:.05em;color:#D3C4C1;font-weight:500;transition:color .3s;}
+  .progress-step.active{color:var(--accent);}
+
+  form{position:relative;}
+  .step{display:none;}
+  .step.active{display:block;animation:fadeStep .45s ease;}
+  @keyframes fadeStep{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .step h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:25px;margin:0 0 32px;letter-spacing:.005em;}
+
+  .field{margin-bottom:30px;}
+  .field:last-of-type{margin-bottom:0;}
+  .field label{display:block;font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:12px;letter-spacing:.01em;line-height:1.55;}
+  .field-tag{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-left:6px;}
+  input[type=text], input[type=tel], textarea{
+    width:100%;border:none;border-bottom:1.3px solid var(--line);background:transparent;
+    padding:10px 1px 12px;font-family:'Quicksand',sans-serif;font-weight:500;font-size:16px;color:var(--ink);
+    transition:border-color .25s;border-radius:0;
+  }
+  input[type=text]:focus, input[type=tel]:focus, textarea:focus{outline:none;border-color:var(--accent);}
+  textarea{min-height:100px;resize:vertical;line-height:1.65;font-family:inherit;}
+  input::placeholder, textarea::placeholder{color:#B9ADA9;font-weight:400;}
+
+  .opcao-lista{margin-top:2px;}
+  .opcao{display:flex;align-items:flex-start;gap:13px;padding:14px 0;border-bottom:1.3px solid var(--line);cursor:pointer;font-size:14.5px;font-weight:500;color:var(--ink);line-height:1.5;}
+  .opcao-lista .opcao:last-of-type{border-bottom:1.3px solid var(--line);}
+  .opcao input{appearance:none;-webkit-appearance:none;width:18px;height:18px;border:1.3px solid #C9B9B6;flex-shrink:0;margin-top:2px;cursor:pointer;position:relative;background:transparent;}
+  .opcao input[type=checkbox]{border-radius:3px;}
+  .opcao input[type=radio]{border-radius:50%;}
+  .opcao input:checked{border-color:var(--accent);background:var(--accent);}
+  .opcao input[type=checkbox]:checked::after{content:'';position:absolute;left:5px;top:2px;width:4px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);}
+  .opcao input[type=radio]:checked::after{content:'';position:absolute;left:5px;top:5px;width:6px;height:6px;border-radius:50%;background:#fff;}
+  .opcao span{padding-top:1px;}
+
+  .outro-texto{margin:2px 0 0 31px;}
+  .outro-texto input{border-bottom:1.3px solid var(--line);font-size:15px;}
+
+  .erro{color:#B5544A;font-size:12.5px;margin-top:12px;display:none;}
+
+  .step-actions{display:flex;justify-content:space-between;align-items:center;margin-top:46px;gap:16px;}
+  .step-actions.only-next{justify-content:flex-end;}
+  .btn-back{background:none;border:none;color:var(--ink-soft);font-family:'Quicksand',sans-serif;font-weight:600;font-size:13px;letter-spacing:.03em;cursor:pointer;padding:12px 4px;}
+  .btn-back:hover{color:var(--ink);}
+  .btn-next, .btn-submit{
+    background:var(--ink);color:var(--bg);border:none;border-radius:3px;padding:15px 34px;font-family:'Quicksand',sans-serif;font-weight:600;
+    font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .25s;white-space:nowrap;
+  }
+  .btn-next:hover, .btn-submit:hover{background:var(--accent);}
+  .btn-next:disabled, .btn-submit:disabled{opacity:.55;cursor:default;}
+
+  .obrigada{display:none;text-align:center;padding:56px 0 40px;}
+  .obrigada .monograma{margin-bottom:26px;}
+  .obrigada h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:32px;margin:0 0 24px;letter-spacing:.005em;}
+  .obrigada p{font-size:15px;color:var(--ink-soft);line-height:1.9;max-width:400px;margin:0 auto;}
+  .obrigada-linha{width:36px;height:1px;background:var(--gold);margin:0 auto 24px;}
+  .monograma svg{display:block;margin:0 auto;}
+
+  @media(min-width:640px){
+    .page{padding-top:76px;}
+    .step h2{font-size:28px;}
+  }
+
+  .whatsapp-flutuante{
+    position:fixed;right:max(20px, env(safe-area-inset-right));bottom:max(20px, env(safe-area-inset-bottom));
+    width:56px;height:56px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 14px rgba(44,60,60,.28);z-index:50;text-decoration:none;transition:transform .2s ease;
+  }
+  .whatsapp-flutuante:hover{transform:scale(1.06);}
+  .whatsapp-flutuante svg{width:28px;height:28px;display:block;}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="intro">
+    <div class="monograma" aria-hidden="true">
+      <svg width="46" height="68" viewBox="0 0 46 68" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1.5" y="1.5" width="43" height="65" rx="21.5" fill="none" stroke="#2C3C3C" stroke-width="1.1"/>
+        <text x="16" y="42" font-family="'Cormorant Garamond',Georgia,serif" font-size="26" text-anchor="middle" fill="#2C3C3C">J</text>
+        <text x="29" y="42" font-family="'Cormorant Garamond',Georgia,serif" font-size="26" font-style="italic" text-anchor="middle" fill="#2C3C3C">B</text>
+      </svg>
+    </div>
+    <p class="marca-nome">JANAÍNA BÍLIBIO</p>
+    <p class="marca-tagline">Projetista de Imagem</p>
+    <p class="eyebrow">Método ALMA®</p>
+    <h1>Formulário de aplicação</h1>
+    <p class="lead">Esta aplicação é o primeiro passo para que eu entenda melhor sobre você, seu momento e se o projeto ALMA é para você</p>
+    <p class="meta">Leva aproximadamente 5 minutos</p>
+  </div>
+
+  <div class="progress">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-steps">
+      <span class="progress-step" data-step="1">01</span>
+      <span class="progress-step" data-step="2">02</span>
+      <span class="progress-step" data-step="3">03</span>
+      <span class="progress-step" data-step="4">04</span>
+      <span class="progress-step" data-step="5">05</span>
+    </div>
+  </div>
+
+  <form id="formAplicacao" novalidate>
+    <section class="step active" data-step="1">
+      <h2>01 — Sobre você</h2>
+      <div class="field"><label>Nome</label><input type="text" name="nome" required></div>
+      <div class="field"><label>WhatsApp</label><input type="tel" name="whatsapp" placeholder="(11) 91234-5678" required></div>
+      <div class="field"><label>Instagram</label><input type="text" name="instagram" placeholder="@seuinstagram" required></div>
+      <div class="field"><label>Cidade</label><input type="text" name="cidade" required></div>
+      <div class="field"><label>Qual sua área de atuação?</label><input type="text" name="areaAtuacao" required></div>
+      <div class="step-actions only-next"><button type="button" class="btn-next" onclick="avancarEtapa(this)">Continuar</button></div>
+    </section>
+
+    <section class="step" data-step="2">
+      <h2>02 — O que trouxe você até aqui</h2>
+      <div class="field">
+        <label>O que te motivou a procurar ajuda com sua imagem?</label>
+        <div class="opcao-lista">
+          <label class="opcao"><input type="checkbox" name="motivos" value="Costumo comprar muitas peças e não usar"><span>Costumo comprar muitas peças e não usar</span></label>
+          <label class="opcao"><input type="checkbox" name="motivos" value="Meu guarda-roupas está cheio e mesmo assim parece que eu não tenho roupas"><span>Meu guarda-roupas está cheio e mesmo assim parece que eu não tenho roupas</span></label>
+          <label class="opcao"><input type="checkbox" name="motivos" value="Estou sempre com as mesmas peças, não consigo variar"><span>Estou sempre com as mesmas peças, não consigo variar</span></label>
+          <label class="opcao"><input type="checkbox" name="motivos" value="Não compro nada porque não sei o que combina comigo"><span>Não compro nada porque não sei o que combina comigo</span></label>
+          <label class="opcao"><input type="checkbox" name="motivos" value="Preciso melhorar meu posicionamento profissional"><span>Preciso melhorar meu posicionamento profissional</span></label>
+          <label class="opcao"><input type="checkbox" name="motivos" value="Sinto que tenho cara de muito nova e não gero segurança nos clientes/pacientes"><span>Sinto que tenho cara de muito nova e não gero segurança nos clientes/pacientes</span></label>
+          <label class="opcao"><input type="checkbox" id="motivoOutroCheck" onchange="alternarCampoOutro()"><span>Outro</span></label>
+        </div>
+        <div class="outro-texto"><input type="text" id="motivoOutroInput" placeholder="Conte com suas palavras..." disabled></div>
+        <div class="erro" id="erroMotivos">Selecione pelo menos uma opção.</div>
+      </div>
+      <div class="field"><label>O que te fez procurar uma consultoria de imagem agora?</label><textarea name="motivoAgora" required></textarea></div>
+      <div class="step-actions"><button type="button" class="btn-back" onclick="voltarEtapa()">Voltar</button><button type="button" class="btn-next" onclick="avancarEtapa(this)">Continuar</button></div>
+    </section>
+
+    <section class="step" data-step="3">
+      <h2>03 — Sua relação com a imagem</h2>
+      <div class="field"><label>Você já investiu em imagem antes (styling, personal shopping, consultoria, apps, cursos...)? Como foi essa experiência?</label><textarea name="jaInvestiuAntes" required></textarea></div>
+      <div class="field"><label>O que não pode faltar nessa consultoria pra você sentir que valeu a pena?</label><textarea name="naoPodeFaltar" required></textarea></div>
+      <div class="step-actions"><button type="button" class="btn-back" onclick="voltarEtapa()">Voltar</button><button type="button" class="btn-next" onclick="avancarEtapa(this)">Continuar</button></div>
+    </section>
+
+    <section class="step" data-step="4">
+      <h2>04 — Sua imagem profissional</h2>
+      <div class="field"><label>Se você está aqui por motivos profissionais, como você quer ser vista pelos seus clientes ou pacientes?<span class="field-tag">Opcional</span></label><textarea name="comoQuerSerVista"></textarea></div>
+      <div class="step-actions"><button type="button" class="btn-back" onclick="voltarEtapa()">Voltar</button><button type="button" class="btn-next" onclick="avancarEtapa(this)">Continuar</button></div>
+    </section>
+
+    <section class="step" data-step="5">
+      <h2>05 — Investimento</h2>
+      <div class="field">
+        <label>Qual a sua disponibilidade de investimento?</label>
+        <div class="opcao-lista">
+          <label class="opcao"><input type="radio" name="disponibilidadeInvestimento" value="De R$2.000 a R$3.000" required><span>De R$2.000 a R$3.000</span></label>
+          <label class="opcao"><input type="radio" name="disponibilidadeInvestimento" value="De R$3.000 a R$5.000"><span>De R$3.000 a R$5.000</span></label>
+          <label class="opcao"><input type="radio" name="disponibilidadeInvestimento" value="De R$7.000 a R$12.000"><span>De R$7.000 a R$12.000</span></label>
+        </div>
+        <div class="erro" id="erroFaixa">Selecione uma faixa de investimento.</div>
+      </div>
+      <div class="erro" id="erroEnvio">Não foi possível enviar sua aplicação. Verifique sua internet e tente novamente.</div>
+      <div class="step-actions"><button type="button" class="btn-back" onclick="voltarEtapa()">Voltar</button><button type="submit" class="btn-submit">Enviar minha aplicação</button></div>
+    </section>
+  </form>
+
+  <div id="obrigada" class="obrigada">
+    <div class="monograma" aria-hidden="true">
+      <svg width="38" height="56" viewBox="0 0 46 68" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1.5" y="1.5" width="43" height="65" rx="21.5" fill="none" stroke="#C8A96B" stroke-width="1.1"/>
+        <text x="16" y="42" font-family="'Cormorant Garamond',Georgia,serif" font-size="26" text-anchor="middle" fill="#C8A96B">J</text>
+        <text x="29" y="42" font-family="'Cormorant Garamond',Georgia,serif" font-size="26" font-style="italic" text-anchor="middle" fill="#C8A96B">B</text>
+      </svg>
+    </div>
+    <div class="obrigada-linha"></div>
+    <h2>Aplicação recebida.</h2>
+    <p>Obrigada por compartilhar um pouco do seu momento comigo. Vou analisar suas respostas com atenção e, se perceber que o Método ALMA® faz sentido para você neste momento, entrarei em contato pelo WhatsApp.</p>
+  </div>
+</div>
+<a class="whatsapp-flutuante" href="https://wa.me/5541988231344" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+  <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="#fff"><path d="M16.004 3C9.377 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.48L4 29l7.72-1.87A11.9 11.9 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm0 21.7c-1.98 0-3.83-.55-5.41-1.5l-.39-.23-4.58 1.11 1.13-4.47-.25-.4A9.62 9.62 0 0 1 6.3 15c0-5.36 4.36-9.7 9.7-9.7 5.35 0 9.7 4.35 9.7 9.7 0 5.35-4.35 9.7-9.7 9.7zm5.34-7.27c-.29-.15-1.72-.85-1.99-.95-.27-.1-.46-.15-.66.15-.2.29-.76.95-.93 1.15-.17.2-.34.22-.63.07-.29-.15-1.22-.45-2.32-1.43-.86-.77-1.44-1.71-1.61-2-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.2-.29.29-.49.1-.2.05-.37-.02-.51-.07-.15-.66-1.59-.9-2.18-.24-.57-.48-.49-.66-.5h-.56c-.2 0-.51.07-.78.37s-1.03 1-1.03 2.45 1.06 2.85 1.2 3.05c.15.2 2.09 3.19 5.06 4.47.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.72-.7 1.96-1.38.24-.68.24-1.26.17-1.38-.07-.12-.26-.2-.55-.35z"/></svg>
+</a>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"><\/script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"><\/script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"><\/script>
+<script>
+firebase.initializeApp(__FIREBASE_CONFIG__);
+var db = firebase.firestore();
+var form = document.getElementById('formAplicacao');
+var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
+var totalSteps = steps.length;
+var currentStep = 1;
+
+function alternarCampoOutro(){
+  var checkOutro = document.getElementById('motivoOutroCheck');
+  var inputOutro = document.getElementById('motivoOutroInput');
+  inputOutro.disabled = !checkOutro.checked;
+  if(!checkOutro.checked) inputOutro.value = '';
+}
+
+function validarEtapaAtual(stepEl){
+  var campos = Array.prototype.slice.call(stepEl.querySelectorAll('input[type=text], input[type=tel], textarea'));
+  for(var i=0;i<campos.length;i++){
+    if(campos[i].hasAttribute('required') && !campos[i].checkValidity()){ campos[i].reportValidity(); return false; }
+  }
+  if(stepEl.getAttribute('data-step')==='2'){
+    var checkOutro = document.getElementById('motivoOutroCheck');
+    var inputOutro = document.getElementById('motivoOutroInput');
+    var motivosChecked = stepEl.querySelectorAll('input[name=motivos]:checked').length;
+    var outroPreenchido = checkOutro.checked && inputOutro.value.trim();
+    var erroMotivos = document.getElementById('erroMotivos');
+    if(motivosChecked===0 && !outroPreenchido){ erroMotivos.style.display='block'; return false; }
+    erroMotivos.style.display='none';
+  }
+  return true;
+}
+
+function irParaEtapa(n){
+  if(n<1) n=1; if(n>totalSteps) n=totalSteps;
+  steps.forEach(function(s){ s.classList.toggle('active', Number(s.getAttribute('data-step'))===n); });
+  currentStep = n;
+  atualizarProgresso();
+  window.scrollTo({top:0, behavior:'smooth'});
+  salvarRascunho();
+}
+function atualizarProgresso(){
+  var pct = ((currentStep-1)/(totalSteps-1))*100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  Array.prototype.slice.call(document.querySelectorAll('.progress-step')).forEach(function(el){
+    el.classList.toggle('active', Number(el.getAttribute('data-step'))<=currentStep);
+  });
+}
+function avancarEtapa(btn){
+  var stepEl = btn.closest('.step');
+  if(!validarEtapaAtual(stepEl)) return;
+  irParaEtapa(currentStep+1);
+}
+function voltarEtapa(){ irParaEtapa(currentStep-1); }
+atualizarProgresso();
+
+/* Rascunho: salva o que a pessoa já preencheu mesmo se ela não enviar o formulário. Mesmo id de sessão pra não duplicar em recarregamentos. */
+var draftId = (function(){
+  var existente = sessionStorage.getItem('almaRascunhoId');
+  if(existente) return existente;
+  var novo = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,10);
+  sessionStorage.setItem('almaRascunhoId', novo);
+  return novo;
+})();
+var draftCriadoEm = Date.now();
+var _rascunhoTimeout = null;
+
+function coletarDadosRascunho(){
+  var checkOutro = document.getElementById('motivoOutroCheck');
+  var inputOutro = document.getElementById('motivoOutroInput');
+  var motivos = Array.prototype.slice.call(form.querySelectorAll('input[name=motivos]:checked')).map(function(el){ return el.value; });
+  if(checkOutro && checkOutro.checked && inputOutro.value.trim()) motivos.push('Outro: ' + inputOutro.value.trim());
+  var fd = new FormData(form);
+  return {
+    nome: fd.get('nome')||'',
+    whatsapp: fd.get('whatsapp')||'',
+    instagram: fd.get('instagram')||'',
+    cidade: fd.get('cidade')||'',
+    areaAtuacao: fd.get('areaAtuacao')||'',
+    motivos: motivos,
+    motivoAgora: fd.get('motivoAgora')||'',
+    comoQuerSerVista: fd.get('comoQuerSerVista')||'',
+    jaInvestiuAntes: fd.get('jaInvestiuAntes')||'',
+    naoPodeFaltar: fd.get('naoPodeFaltar')||'',
+    disponibilidadeInvestimento: fd.get('disponibilidadeInvestimento')||'',
+    etapaAlcancada: currentStep,
+    criadoEm: draftCriadoEm,
+    atualizadoEm: Date.now()
+  };
+}
+function rascunhoTemConteudo(dados){
+  return !!(dados.nome || dados.whatsapp || dados.instagram || dados.cidade || dados.areaAtuacao || dados.motivos.length || dados.motivoAgora || dados.comoQuerSerVista || dados.jaInvestiuAntes || dados.naoPodeFaltar || dados.disponibilidadeInvestimento);
+}
+function salvarRascunho(){
+  var dados = coletarDadosRascunho();
+  if(!rascunhoTemConteudo(dados)) return;
+  firebase.auth().signInAnonymously().then(function(){
+    return db.collection('rascunhos').doc(draftId).set(dados, {merge:true});
+  }).catch(function(err){ console.error('Falha ao salvar rascunho', err); });
+}
+function agendarSalvarRascunho(){
+  clearTimeout(_rascunhoTimeout);
+  _rascunhoTimeout = setTimeout(salvarRascunho, 1500);
+}
+form.addEventListener('input', agendarSalvarRascunho);
+form.addEventListener('change', agendarSalvarRascunho);
+document.addEventListener('visibilitychange', function(){ if(document.hidden) salvarRascunho(); });
+
+form.onsubmit = function(e){
+  e.preventDefault();
+  var checkOutro = document.getElementById('motivoOutroCheck');
+  var inputOutro = document.getElementById('motivoOutroInput');
+  var motivos = Array.prototype.slice.call(form.querySelectorAll('input[name=motivos]:checked')).map(function(el){ return el.value; });
+  if(checkOutro.checked && inputOutro.value.trim()) motivos.push('Outro: ' + inputOutro.value.trim());
+  var erroMotivos = document.getElementById('erroMotivos');
+  if(motivos.length===0){ erroMotivos.style.display='block'; irParaEtapa(2); return; }
+  erroMotivos.style.display='none';
+  var fd = new FormData(form);
+  var erroFaixa = document.getElementById('erroFaixa');
+  if(!fd.get('disponibilidadeInvestimento')){ erroFaixa.style.display='block'; return; }
+  erroFaixa.style.display='none';
+  var erroEnvio = document.getElementById('erroEnvio');
+  erroEnvio.style.display='none';
+  var btn = form.querySelector('button[type=submit]');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  var dados = {
+    nome: fd.get('nome')||'',
+    whatsapp: fd.get('whatsapp')||'',
+    instagram: fd.get('instagram')||'',
+    cidade: fd.get('cidade')||'',
+    areaAtuacao: fd.get('areaAtuacao')||'',
+    motivos: motivos,
+    motivoAgora: fd.get('motivoAgora')||'',
+    comoQuerSerVista: fd.get('comoQuerSerVista')||'',
+    jaInvestiuAntes: fd.get('jaInvestiuAntes')||'',
+    naoPodeFaltar: fd.get('naoPodeFaltar')||'',
+    disponibilidadeInvestimento: fd.get('disponibilidadeInvestimento')||'',
+    criadoEm: Date.now()
+  };
+  firebase.auth().signInAnonymously().then(function(){
+    return db.collection('aplicacoes').add(dados);
+  }).then(function(){
+    document.querySelector('.intro').style.display = 'none';
+    document.querySelector('.progress').style.display = 'none';
+    form.style.display = 'none';
+    document.getElementById('obrigada').style.display = 'block';
+    window.scrollTo(0,0);
+    db.collection('rascunhos').doc(draftId).delete().catch(function(){});
+  }).catch(function(err){
+    erroEnvio.style.display='block';
+    btn.disabled = false; btn.textContent = 'Enviar minha aplicação';
+    console.error(err);
+  });
+  return false;
+};
+<\/script>
+</body>
+</html>
+`;
+function gerarHtmlFormularioPublico(firebaseConfig){
+  return FORM_PUBLICO_TEMPLATE.replace('__FIREBASE_CONFIG__', JSON.stringify(firebaseConfig));
+}
+
 /* reset checklist diário se mudou o dia */
 if(state.rotina.completedToday.date !== todayStr()){
   state.rotina.completedToday = {date: todayStr(), items:{}};
@@ -878,6 +1376,7 @@ const TABS = [
   {id:'analytics', label:'Analytics', grupo:'Visão Geral'},
   {id:'crm', label:'CRM', grupo:'Vendas'},
   {id:'clientes', label:'Clientes', grupo:'Vendas'},
+  {id:'aplicacoes', label:'Aplicações', grupo:'Vendas'},
   {id:'agenda', label:'Agenda', grupo:'Operação'},
   {id:'rotina', label:'Rotina', grupo:'Operação'},
   {id:'gestao', label:'Gestão', grupo:'Operação'},
@@ -995,7 +1494,7 @@ function mostrarToast(mensagem, tipo){
 function render(){
   const c = document.getElementById('content');
   document.getElementById('today-label').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long', year:'numeric'});
-  const renderers = {dashboard:renderDashboard, metas:renderMetas, analytics:renderAnalytics, crm:renderCRM, clientes:renderClientes, agenda:renderAgenda, rotina:renderRotina, updates:renderUpdates, base:renderBase, scripts:renderScripts, financeiro:renderFinanceiro, financaspessoais:renderFinancasPessoais, gestao:renderGestao, trafego:renderTrafego, conteudo:renderConteudo, nuvem:renderNuvem, config:renderConfig};
+  const renderers = {dashboard:renderDashboard, metas:renderMetas, analytics:renderAnalytics, crm:renderCRM, clientes:renderClientes, aplicacoes:renderAplicacoes, agenda:renderAgenda, rotina:renderRotina, updates:renderUpdates, base:renderBase, scripts:renderScripts, financeiro:renderFinanceiro, financaspessoais:renderFinancasPessoais, gestao:renderGestao, trafego:renderTrafego, conteudo:renderConteudo, nuvem:renderNuvem, config:renderConfig};
   c.innerHTML = renderers[activeTab]();
   updateNotifBadge();
   c.classList.remove('fade-in');
@@ -1669,9 +2168,80 @@ function editProduto(id){
 }
 function delProduto(id){ confirmarAcao('Excluir este produto?', ()=>{ state.meta.produtos = state.meta.produtos.filter(x=>x.id!==id); save(); render(); }, {perigo:true, textoConfirmar:'Excluir'}); }
 
+/* Ordenação "tipo site de compra" — reaproveitada pelas tabelas de CRM e Clientes. "manual" preserva a ordem real (a mesma que o arrastar-e-soltar edita); qualquer outra opção é só uma vista calculada pra exibição, não mexe na ordem real guardada — por isso o arrastar fica desativado enquanto uma ordenação automática está ativa (arrastar não teria efeito visível, já que a próxima renderização reordenaria de novo). */
+const ORDENACAO_OPCOES = [
+  {value:'manual', label:'Ordem manual (arrastar)'},
+  {value:'data_desc', label:'Data — mais recentes primeiro'},
+  {value:'data_asc', label:'Data — mais antigos primeiro'},
+  {value:'az', label:'Nome A → Z'},
+  {value:'za', label:'Nome Z → A'},
+  {value:'30d', label:'Últimos 30 dias'},
+  {value:'60d', label:'Últimos 60 dias'},
+  {value:'90d', label:'Últimos 90 dias'},
+  {value:'365d', label:'Último ano'}
+];
+function aplicarOrdenacao(lista, ordenacao, campoData, campoNome){
+  if(!ordenacao || ordenacao==='manual') return lista;
+  let out = lista.slice();
+  const janelaDias = {'30d':30,'60d':60,'90d':90,'365d':365}[ordenacao];
+  if(janelaDias){
+    out = out.filter(it=>{ if(!it[campoData]) return false; const d = daysDiff(it[campoData]); return d>=-janelaDias && d<=0; });
+    return out.sort((a,b)=> (b[campoData]||'').localeCompare(a[campoData]||''));
+  }
+  if(ordenacao==='az') return out.sort((a,b)=> (a[campoNome]||'').localeCompare(b[campoNome]||'', 'pt-BR'));
+  if(ordenacao==='za') return out.sort((a,b)=> (b[campoNome]||'').localeCompare(a[campoNome]||'', 'pt-BR'));
+  if(ordenacao==='data_desc') return out.sort((a,b)=> (b[campoData]||'').localeCompare(a[campoData]||''));
+  if(ordenacao==='data_asc') return out.sort((a,b)=> (a[campoData]||'').localeCompare(b[campoData]||''));
+  return out;
+}
+function renderSeletorOrdenacao(valorAtual, onChangeFn){
+  return `<select onchange="${onChangeFn}(this.value)" style="font-size:12.5px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--white);color:var(--text-dark);">
+    ${ORDENACAO_OPCOES.map(o=>`<option value="${o.value}" ${o.value===valorAtual?'selected':''}>${escHtml(o.label)}</option>`).join('')}
+  </select>`;
+}
+/* Busca em tabela — normaliza acento/maiúscula pra achar "sao paulo" mesmo digitando sem acento, e verifica vários campos de uma vez. Reaproveitada pelo CRM e Clientes. */
+function normalizarBusca(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); }
+function pessoaCombinaComBusca(p, termo){
+  if(!termo) return true;
+  const alvo = normalizarBusca(termo);
+  const campos = [p.nome, p.contato, p.estagio, p.status, p.cidade, p.profissao, p.empresa, p.produto, p.origem, p.notas, Array.isArray(p.tags)?p.tags.join(' '):''];
+  return campos.some(c=> c && normalizarBusca(c).includes(alvo));
+}
 /* ===================== CRM ===================== */
 let crmDisplayMode = 'tabela';
+let crmOrdenacao = 'manual';
+let crmBusca = '';
 function setCrmDisplayMode(m){ crmDisplayMode = m; render(); }
+function setCrmOrdenacao(v){ crmOrdenacao = v; render(); }
+/* Busca ao vivo: atualiza só o painel de resultados (igual à Calculadora Comercial), nunca a página inteira — assim o campo de busca não perde o foco a cada letra digitada. */
+function onCrmBuscaInput(v){
+  crmBusca = v;
+  const painel = document.getElementById('crm-resultados');
+  if(painel) painel.innerHTML = renderCrmResultados();
+}
+function renderCrmResultados(){
+  const stages = state.crm.stages;
+  const leads = getLeads();
+  const leadsFiltrados = leads.filter(l=> pessoaCombinaComBusca(l, crmBusca));
+  const leadsOrdenados = aplicarOrdenacao(leadsFiltrados, crmOrdenacao, 'dataCriacao', 'nome');
+  const arrastavel = crmOrdenacao==='manual' && !crmBusca;
+  const rows = leadsOrdenados.map((l,li)=>{
+    const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
+    let fuTag = '—';
+    if(fu!==null){ fuTag = `<span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span>`; }
+    const prob = probabilidadeFechamento(l);
+    const probClasse = prob>=70? 'stage-won' : prob>=40? 'stage-proposal' : prob===0? 'stage-lost' : 'stage-new';
+    return `<tr ${arrastavel?`class="arrastavel-item" draggable="true" data-arr-contexto="leads" data-arr-extra="" data-arr-idx="${li}"
+      ondragstart="onDragStartOrdenar(event,'leads',null,${li})" ondragend="onDragEndOrdenar(event)"
+      ondragover="onDragOverOrdenar(event,${li})" ondragleave="onDragLeaveOrdenar(event)"
+      ondrop="onDropOrdenar(event,'leads',null,${li})"`:''}>
+      <td ${arrastavel?`class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'leads',null,${li})"`:''}>${arrastavel?'⠿':''}</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(l.nome))}</span>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td><span class="tag ${probClasse}">${prob}%</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
+    <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.papeis.includes('cliente')? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
+  }).join('');
+  const filtroAtivo = !!crmBusca || (crmDisplayMode==='tabela' && crmOrdenacao!=='manual');
+  const contagem = `<div class="small-muted" style="margin-bottom:10px;">${filtroAtivo? `${leadsOrdenados.length} de ${leads.length} leads` : `${leads.length} leads`}</div>`;
+  return contagem + (crmDisplayMode==='kanban' ? renderKanban(stages, leadsFiltrados, 'estagio', 'leads') : (leadsOrdenados.length? `<table><thead><tr><th></th><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Probabilidade</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : emptyState(leads.length? 'Nenhum lead encontrado.' : 'Nenhum lead cadastrado ainda.', '<button class="btn gold xs" onclick="addLead()">+ Novo lead</button>')));
+}
 function renderCRM(){
   if(crmView==='ficha' && crmFichaId){
     const l = state.pessoas.find(x=>x.id===crmFichaId);
@@ -1679,41 +2249,29 @@ function renderCRM(){
     crmView='funil'; crmFichaId=null;
   }
   const stages = state.crm.stages;
-  const leads = getLeads();
   const cadenciaInfo = `
   <div class="note">
   <b>Cadência de follow-up recomendada:</b> Novo Lead → sem resposta: D+1, D+3, D+7 (depois reduz prioridade) · Contato Iniciado → agendar diagnóstico em até D+2 · Diagnóstico Agendado → lembrete 1 dia antes + 1h antes · Diagnóstico Realizado → enviar proposta em até 24h · Proposta Enviada → D+1, D+3, D+5, D+7 (script pronto na aba Scripts) · Aguardando Decisão → reforçar valor a cada poucos dias até ela decidir · Sem Retorno / Momento Inadequado → reativar em D+30 · Perdido (qualquer motivo) → reativar em D+30 e D+90.
   <br><br><b>Quando fechar uma venda</b>, marque o estágio como "Fechado - Ganho" — o botão "Virar cliente" aparece na linha e já leva os dados pro banco de Clientes. Clique em "Ficha" pra ver o perfil completo e registrar o histórico de interações do lead. No modo Kanban, arraste o cartão entre colunas pra mudar o estágio.
   </div>`;
-  const rows = leads.map((l,li)=>{
-    const fu = l.proximoFollowUp ? daysDiff(l.proximoFollowUp) : null;
-    let fuTag = '—';
-    if(fu!==null){ fuTag = `<span class="tag ${fu<0?'overdue':(fu===0?'today':'upcoming')}">${fmtDate(l.proximoFollowUp)}</span>`; }
-    const prob = probabilidadeFechamento(l);
-    const probClasse = prob>=70? 'stage-won' : prob>=40? 'stage-proposal' : prob===0? 'stage-lost' : 'stage-new';
-    return `<tr class="arrastavel-item" draggable="true" data-arr-contexto="leads" data-arr-extra="" data-arr-idx="${li}"
-      ondragstart="onDragStartOrdenar(event,'leads',null,${li})" ondragend="onDragEndOrdenar(event)"
-      ondragover="onDragOverOrdenar(event,${li})" ondragleave="onDragLeaveOrdenar(event)"
-      ondrop="onDropOrdenar(event,'leads',null,${li})">
-      <td class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'leads',null,${li})">⠿</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(l.nome))}</span>${escHtml(l.nome)}</td><td>${fmtDate(l.dataCriacao)}</td><td>${escHtml(l.contato)}</td><td><span class="tag ${stageColorClass(l.estagio)}">${escHtml(l.estagio)}</span></td><td><span class="tag ${probClasse}">${prob}%</span></td><td>${fmtBRL(l.valorEstimado)}</td><td>${fuTag}</td>
-    <td><button class="btn ghost xs" onclick="abrirFicha('${l.id}')">Ficha</button> <button class="btn ghost xs" onclick="editLead('${l.id}')">Editar</button> ${l.estagio==='Fechado - Ganho' && !l.papeis.includes('cliente')? `<button class="btn gold xs" onclick="converterCliente('${l.id}')">Virar cliente</button>`:''} <button class="btn danger xs" onclick="delLead('${l.id}')">Excluir</button></td></tr>`;
-  }).join('');
   return `
   ${cadenciaInfo}
   <div class="card">
     <div class="toolbar">
-      <h3 class="section-title" style="margin:0;">Funil de vendas (${leads.length} leads)</h3>
+      <h3 class="section-title" style="margin:0;">Funil de vendas</h3>
       <div class="subtabs" style="margin:0;">
         <div class="subtab ${crmDisplayMode==='tabela'?'active':''}" onclick="setCrmDisplayMode('tabela')">Tabela</div>
         <div class="subtab ${crmDisplayMode==='kanban'?'active':''}" onclick="setCrmDisplayMode('kanban')">Kanban</div>
       </div>
+      <input type="text" placeholder="Buscar lead..." value="${escHtml(crmBusca)}" oninput="onCrmBuscaInput(this.value)" style="font-size:12.5px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;min-width:160px;">
+      ${crmDisplayMode==='tabela' ? renderSeletorOrdenacao(crmOrdenacao,'setCrmOrdenacao') : ''}
       <button class="btn gold xs" onclick="addLead()">+ Novo lead</button>
     </div>
-    ${crmDisplayMode==='kanban' ? renderKanban(stages, leads, 'estagio', 'leads') : (leads.length? `<table><thead><tr><th></th><th>Nome</th><th>Data de entrada</th><th>Contato</th><th>Estágio</th><th>Probabilidade</th><th>Valor estimado</th><th>Próx. follow-up</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : emptyState('Nenhum lead cadastrado ainda.', '<button class="btn gold xs" onclick="addLead()">+ Novo lead</button>'))}
+    <div id="crm-resultados">${renderCrmResultados()}</div>
   </div>
   <div class="card" style="margin-top:16px;">
     <h3 class="section-title">Resumo por estágio</h3>
-    <div class="grid grid-4">${stages.map((s,i)=>`<div class="kpi"><div class="label">${escHtml(s)}</div><div class="value">${leads.filter(l=>l.estagio===s).length}</div></div>`).join('')}</div>
+    <div class="grid grid-4">${stages.map((s,i)=>`<div class="kpi"><div class="label">${escHtml(s)}</div><div class="value">${getLeads().filter(l=>l.estagio===s).length}</div></div>`).join('')}</div>
   </div>`;
 }
 /* Kanban genérico com drag-and-drop — reaproveitado pelo funil do CRM (por estágio) e pelas Tarefas (por status) */
@@ -1908,7 +2466,7 @@ function leadFields(){
     {key:'nome', label:'Nome', type:'text', required:true},
     {key:'contato', label:'Contato (WhatsApp/Instagram)', type:'text'},
     {key:'dataCriacao', label:'Data de entrada', type:'date', required:true},
-    {key:'origem', label:'Origem', type:'select', options:['Instagram','TikTok','WhatsApp','Indicação','Tráfego pago','Outro']},
+    {key:'origem', label:'Origem', type:'select', options:['Instagram','TikTok','WhatsApp','Indicação','Tráfego pago','Formulário','Outro']},
     {key:'campanha', label:'Campanha (se veio de tráfego pago)', type:'select', options:[{value:'',label:'— nenhuma —'}, ...state.trafego.campanhas.map(c=>c.nome)]},
     {key:'postOrigem', label:'Post de origem (se veio de um post específico)', type:'select', options:[{value:'',label:'— nenhum —'}, ...state.conteudo.posts.map(p=>({value:p.id, label:fmtDate(p.data)+' — '+p.plataforma+' '+p.formato+(p.pilar?' ('+p.pilar+')':'')}))]},
     {key:'estagio', label:'Estágio', type:'select', options: state.crm.stages},
@@ -2135,15 +2693,22 @@ function converterCliente(id){
 
 /* ===================== CLIENTES ===================== */
 let clientesFilter = 'todas';
+let clientesOrdenacao = 'manual';
+let clientesBusca = '';
 let clientesView = 'lista';
 let clientesChecklistId = null;
-function renderClientes(){
-  if(clientesView==='checklist' && clientesChecklistId){
-    const c = state.pessoas.find(x=>x.id===clientesChecklistId);
-    if(c) return renderFichaPessoa(c, 'Voltar pra lista de clientes', 'fecharChecklist()');
-    clientesView='lista'; clientesChecklistId=null;
-  }
-  const list = getClientes().filter(c=> clientesFilter==='todas' ? true : c.status===clientesFilter);
+function setClientesFilter(f){ clientesFilter=f; render(); }
+function setClientesOrdenacao(v){ clientesOrdenacao=v; render(); }
+function onClientesBuscaInput(v){
+  clientesBusca = v;
+  const painel = document.getElementById('clientes-resultados');
+  if(painel) painel.innerHTML = renderClientesResultados();
+}
+function renderClientesResultados(){
+  const listBase = getClientes().filter(c=> clientesFilter==='todas' ? true : c.status===clientesFilter);
+  const listFiltrada = listBase.filter(c=> pessoaCombinaComBusca(c, clientesBusca));
+  const list = aplicarOrdenacao(listFiltrada, clientesOrdenacao, 'dataFechamento', 'nome');
+  const arrastavel = clientesOrdenacao==='manual' && !clientesBusca;
   const rows = list.map((c,ci)=>{
     const rem = c.proximoReminder? daysDiff(c.proximoReminder): null;
     let remTag='—';
@@ -2151,13 +2716,23 @@ function renderClientes(){
     const checklist = c.checklist||[];
     const done = checklist.filter(i=>i.done).length;
     const progresso = checklist.length? `${done}/${checklist.length}` : '—';
-    return `<tr class="arrastavel-item" draggable="true" data-arr-contexto="clientes" data-arr-extra="" data-arr-idx="${ci}"
+    return `<tr ${arrastavel?`class="arrastavel-item" draggable="true" data-arr-contexto="clientes" data-arr-extra="" data-arr-idx="${ci}"
       ondragstart="onDragStartOrdenar(event,'clientes',null,${ci})" ondragend="onDragEndOrdenar(event)"
       ondragover="onDragOverOrdenar(event,${ci})" ondragleave="onDragLeaveOrdenar(event)"
-      ondrop="onDropOrdenar(event,'clientes',null,${ci})">
-      <td class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'clientes',null,${ci})">⠿</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(c.nome))}</span>${escHtml(c.nome)}</td><td>${escHtml(c.produto)}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${escHtml(c.status)}</span></td><td>${remTag}</td><td>${progresso}</td>
+      ondrop="onDropOrdenar(event,'clientes',null,${ci})"`:''}>
+      <td ${arrastavel?`class="arrasta-alca" ontouchstart="onTouchStartOrdenar(event,'clientes',null,${ci})"`:''}>${arrastavel?'⠿':''}</td><td><span class="kanban-avatar" style="display:inline-flex;margin-right:8px;vertical-align:middle;">${escHtml(inicialNome(c.nome))}</span>${escHtml(c.nome)}</td><td>${escHtml(c.produto)}</td><td>${fmtBRL(c.valor)}</td><td><span class="tag status-${c.status}">${escHtml(c.status)}</span></td><td>${remTag}</td><td>${progresso}</td>
     <td><button class="btn ghost xs" onclick="abrirChecklist('${c.id}')">Ficha</button> <button class="btn ghost xs" onclick="editCliente('${c.id}')">Editar</button> <button class="btn danger xs" onclick="delCliente('${c.id}')">Excluir</button></td></tr>`;
   }).join('');
+  const filtroAtivo = !!clientesBusca || clientesOrdenacao!=='manual';
+  const contagem = `<div class="small-muted" style="margin-bottom:10px;">${filtroAtivo? `${list.length} de ${listBase.length}` : `${listBase.length}`} cliente${listBase.length===1?'':'s'}</div>`;
+  return contagem + (list.length? `<table><thead><tr><th></th><th>Nome</th><th>Produto</th><th>Valor</th><th>Status</th><th>Próx. reminder</th><th>Checklist</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:emptyState(listBase.length? 'Nenhuma cliente encontrada.' : 'Nenhuma cliente aqui ainda.', '<button class="btn gold xs" onclick="addCliente()">+ Nova cliente</button>'));
+}
+function renderClientes(){
+  if(clientesView==='checklist' && clientesChecklistId){
+    const c = state.pessoas.find(x=>x.id===clientesChecklistId);
+    if(c) return renderFichaPessoa(c, 'Voltar pra lista de clientes', 'fecharChecklist()');
+    clientesView='lista'; clientesChecklistId=null;
+  }
   return `
   <div class="subtabs">
     <div class="subtab ${clientesFilter==='todas'?'active':''}" onclick="setClientesFilter('todas')">Todas (${getClientes().length})</div>
@@ -2166,11 +2741,15 @@ function renderClientes(){
   </div>
   <div class="note">Reminders sugeridos: check-in mensal durante o atendimento · pedir depoimento na entrega · reativação/upsell 90 dias após finalizada · aniversário (opcional). O checklist de execução é gerado automaticamente com base no produto contratado (etapas reais do Método ALMA®).</div>
   <div class="card">
-    <div class="toolbar"><h3 class="section-title" style="margin:0;">Clientes</h3><button class="btn gold xs" onclick="addCliente()">+ Nova cliente</button></div>
-    ${list.length? `<table><thead><tr><th></th><th>Nome</th><th>Produto</th><th>Valor</th><th>Status</th><th>Próx. reminder</th><th>Checklist</th><th></th></tr></thead><tbody>${rows}</tbody></table>`:emptyState('Nenhuma cliente aqui ainda.', '<button class="btn gold xs" onclick="addCliente()">+ Nova cliente</button>')}
+    <div class="toolbar">
+      <h3 class="section-title" style="margin:0;">Clientes</h3>
+      <input type="text" placeholder="Buscar cliente..." value="${escHtml(clientesBusca)}" oninput="onClientesBuscaInput(this.value)" style="font-size:12.5px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;min-width:160px;">
+      ${renderSeletorOrdenacao(clientesOrdenacao,'setClientesOrdenacao')}
+      <button class="btn gold xs" onclick="addCliente()">+ Nova cliente</button>
+    </div>
+    <div id="clientes-resultados">${renderClientesResultados()}</div>
   </div>`;
 }
-function setClientesFilter(f){ clientesFilter=f; render(); }
 /* Se ela não mexer no campo "Já recebido", assume que recebeu tudo (venda à vista, o caso comum) — só passa a divergir quando ela mesma marcar um valor menor (parcelamento). */
 function valorFinalRecebido(data){
   const valorNum = Number(data.valor||0);
@@ -2806,6 +3385,122 @@ function handleDesconectarCloud(){
   }, {perigo:true, textoConfirmar:'Desconectar'});
 }
 
+/* ===================== APLICAÇÕES (formulário público) ===================== */
+function renderAplicacoes(){
+  const cfg = loadFormCloudConfig();
+  if(!cfg){
+    return `
+    <div class="note phase2">Formulário de aplicação pro Método ALMA®, pra colocar no link da bio. As respostas caem aqui dentro pra você revisar e transformar em lead com um clique. Usa um projeto Firebase <b>separado</b> do resto do sistema — configuração única, e o restante dos seus dados (leads, clientes, financeiro) nunca fica exposto no formulário público.</div>
+    <div class="card">
+      <h3 class="section-title">Passo a passo (uma vez só)</h3>
+      <ol style="font-size:13.5px;line-height:1.95;">
+        <li>Acesse <b>console.firebase.google.com</b> e crie um <b>novo projeto</b> — separado do que você já usa pra sincronizar o resto do sistema (ex: alma-formulario).</li>
+        <li><b>Build → Firestore Database → Criar banco de dados</b> → "Iniciar em modo de teste" → localização southamerica-east1 (mais perto do Brasil).</li>
+        <li><b>Build → Authentication → Vamos começar → aba Sign-in method</b> → ative <b>dois</b> provedores: <b>"Anônimo"</b> (é o que o formulário público usa pra enviar) e <b>"E-mail/senha"</b> (é o que você vai usar pra ler as respostas — ninguém mais consegue).</li>
+        <li>Ainda em Authentication, vá na aba <b>"Users" (Usuários)</b> → <b>"Add user"</b> → cadastre um e-mail e senha só seus (pode ser qualquer e-mail, não precisa ser de verdade — é só a sua chave de acesso a essa área).</li>
+        <li>Ícone de engrenagem (topo esquerdo) → <b>Configurações do projeto</b> → "Seus aplicativos" → ícone Web <code>&lt;/&gt;</code> → registre um app.</li>
+        <li>Copie o objeto <code>firebaseConfig</code> e cole no campo abaixo, junto com o e-mail e senha que você acabou de criar, depois clique em Conectar.</li>
+        <li>Depois de conectar, volte ao Firestore → aba <b>Regras</b> → cole as regras mostradas mais abaixo → Publicar.</li>
+        <li>Clique em "Baixar formulário" (aparece depois de conectar) e suba o arquivo no Hostinger (ou onde preferir) — depois coloque o link na sua bio.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3 class="section-title">Conectar</h3>
+      <div class="field"><label>Firebase Config (cole o objeto inteiro, do jeito que aparece no Firebase)</label><textarea id="formCloudConfigInput" placeholder='{ apiKey: "...", authDomain: "...", projectId: "...", ... }' style="min-height:130px;"></textarea></div>
+      <div class="field"><label>Seu e-mail de acesso (o que você cadastrou em Authentication → Users)</label><input id="formCloudEmailInput" type="email" placeholder="voce@exemplo.com"></div>
+      <div class="field"><label>Sua senha de acesso</label><input id="formCloudSenhaInput" type="password" placeholder="••••••••"></div>
+      <button class="btn gold" onclick="handleConectarFormCloud()">Conectar</button>
+    </div>
+    <div class="card">
+      <h3 class="section-title">Regras de segurança do Firestore</h3>
+      <p class="small-muted">Cole isso na aba "Regras" do Firestore <b>desse projeto novo</b> e clique em Publicar:</p>
+      <pre style="background:var(--nude);padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /aplicacoes/{itemId} {
+      allow create: if request.auth != null;
+      allow read, delete: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password';
+      allow update: if false;
+    }
+    match /rascunhos/{itemId} {
+      allow create, update: if request.auth != null;
+      allow read, delete: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+  }
+}</pre>
+      <p class="small-muted"><b>Importante:</b> quem preenche o formulário entra de forma anônima e só consegue <b>criar</b> uma candidatura nova (ou ir <b>atualizando</b> um rascunho enquanto ainda está preenchendo) — nunca ler nada, nem a dela mesma, nem de outras pessoas. Só quem entra com o e-mail/senha de verdade (você) consegue <b>ler ou apagar</b> as respostas. É por isso que o passo de criar seu usuário em Authentication → Users é obrigatório — sem ele, ninguém consegue ler as respostas, nem você.</p>
+    </div>`;
+  }
+  if(formCloudStatus !== 'connected'){
+    return `
+    <div class="note phase2">Configuração salva — falta só entrar com seu e-mail e senha pra ver as candidaturas recebidas.</div>
+    <div class="card">
+      <h3 class="section-title">Entrar</h3>
+      <div class="field"><label>Seu e-mail de acesso</label><input id="formCloudEmailInput" type="email" placeholder="voce@exemplo.com"></div>
+      <div class="field"><label>Sua senha de acesso</label><input id="formCloudSenhaInput" type="password" placeholder="••••••••"></div>
+      <button class="btn gold" onclick="handleLoginFormCloud()">Entrar</button>
+      <button class="btn ghost" onclick="handleDesconectarFormCloud()">Esquecer esta configuração</button>
+    </div>`;
+  }
+  const pendentes = formAplicacoesCache;
+  const rascunhos = formRascunhosCache;
+  return `
+  <div class="card">
+    <div class="toolbar">
+      <h3 class="section-title" style="margin:0;">Formulário público</h3>
+      <button class="btn ghost xs" onclick="carregarAplicacoes(); carregarRascunhos();">Atualizar</button>
+      <button class="btn gold xs" onclick="baixarFormularioPublico()">Baixar formulário (HTML)</button>
+      <button class="btn danger xs" onclick="handleDesconectarFormCloud()">Desconectar</button>
+    </div>
+    <p class="small-muted" style="margin:0;">Baixe o arquivo do formulário (já vem com a configuração certa) e suba ele onde preferir (Hostinger, GitHub...) — depois é só colocar o link dele na bio.</p>
+  </div>
+  <div class="note phase2" style="margin-top:16px;">Se você conectou antes de hoje, o formulário agora também salva rascunhos de quem começou e não terminou — pra isso funcionar, volte no Firestore → Regras e cole de novo o bloco atualizado (agora com <code>match /rascunhos/{itemId}</code>) → Publicar. Sem isso, os rascunhos não vão aparecer aqui.</div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Aplicações recebidas (${pendentes.length})</h3>
+    ${pendentes.length ? pendentes.map(renderCardAplicacao).join('') : emptyState('Nenhuma aplicação recebida ainda.')}
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3 class="section-title">Rascunhos — começou e não enviou (${rascunhos.length})</h3>
+    <p class="small-muted" style="margin-top:-6px;">Quem preencheu pelo menos um campo mas não chegou a enviar o formulário. Pode ser um sinal de interesse valioso — dá pra transformar em lead do mesmo jeito.</p>
+    ${rascunhos.length ? rascunhos.map(renderCardRascunho).join('') : emptyState('Nenhum rascunho por enquanto.')}
+  </div>`;
+}
+function renderCardAplicacao(ap){
+  const motivos = Array.isArray(ap.motivos) ? ap.motivos.join(' · ') : '';
+  const data = ap.criadoEm ? fmtDate(new Date(ap.criadoEm).toISOString().slice(0,10)) : '—';
+  return `<div class="script-card">
+    <div class="toolbar" style="margin-bottom:8px;"><h4 style="margin:0;">${escHtml(ap.nome||'(sem nome)')}</h4><span class="small-muted">${data}</span></div>
+    <div class="small-muted">${escHtml(ap.whatsapp||'—')} · ${escHtml(ap.instagram||'—')} · ${escHtml(ap.cidade||'—')} · ${escHtml(ap.areaAtuacao||'—')}</div>
+    <p><b>Motivos:</b> ${escHtml(motivos)}</p>
+    ${ap.motivoAgora? `<p><b>Por que agora:</b> ${escHtml(ap.motivoAgora)}</p>`:''}
+    ${ap.comoQuerSerVista? `<p><b>Como quer ser vista pelos clientes/pacientes:</b> ${escHtml(ap.comoQuerSerVista)}</p>`:''}
+    ${ap.jaInvestiuAntes? `<p><b>Já investiu em imagem antes:</b> ${escHtml(ap.jaInvestiuAntes)}</p>`:''}
+    ${ap.naoPodeFaltar? `<p><b>O que não pode faltar:</b> ${escHtml(ap.naoPodeFaltar)}</p>`:''}
+    <p><b>Disponibilidade de investimento:</b> ${escHtml(ap.disponibilidadeInvestimento||'—')}</p>
+    <button class="btn gold xs" onclick="converterAplicacaoEmLead('${ap.id}')">Virar lead</button>
+    <button class="btn ghost xs" onclick="descartarAplicacao('${ap.id}')">Descartar</button>
+  </div>`;
+}
+/* Card de rascunho — mesma ideia do card de aplicação, mas tolerante a campos vazios (ela pode ter parado em qualquer etapa) e mostrando até onde ela chegou. */
+function renderCardRascunho(ap){
+  const motivos = Array.isArray(ap.motivos) && ap.motivos.length ? ap.motivos.join(' · ') : '';
+  const data = ap.atualizadoEm ? fmtDate(new Date(ap.atualizadoEm).toISOString().slice(0,10)) : (ap.criadoEm ? fmtDate(new Date(ap.criadoEm).toISOString().slice(0,10)) : '—');
+  return `<div class="script-card">
+    <div class="toolbar" style="margin-bottom:8px;"><h4 style="margin:0;">${escHtml(ap.nome||'(sem nome ainda)')}</h4><span class="tag upcoming">Etapa ${ap.etapaAlcancada||1} de 5</span><span class="small-muted">${data}</span></div>
+    <div class="small-muted">${escHtml(ap.whatsapp||'—')} · ${escHtml(ap.instagram||'—')} · ${escHtml(ap.cidade||'—')} · ${escHtml(ap.areaAtuacao||'—')}</div>
+    ${motivos? `<p><b>Motivos:</b> ${escHtml(motivos)}</p>`:''}
+    ${ap.motivoAgora? `<p><b>Por que agora:</b> ${escHtml(ap.motivoAgora)}</p>`:''}
+    ${ap.comoQuerSerVista? `<p><b>Como quer ser vista pelos clientes/pacientes:</b> ${escHtml(ap.comoQuerSerVista)}</p>`:''}
+    ${ap.jaInvestiuAntes? `<p><b>Já investiu em imagem antes:</b> ${escHtml(ap.jaInvestiuAntes)}</p>`:''}
+    ${ap.naoPodeFaltar? `<p><b>O que não pode faltar:</b> ${escHtml(ap.naoPodeFaltar)}</p>`:''}
+    ${ap.disponibilidadeInvestimento? `<p><b>Disponibilidade de investimento:</b> ${escHtml(ap.disponibilidadeInvestimento)}</p>`:''}
+    <button class="btn gold xs" onclick="converterAplicacaoEmLead('${ap.id}','rascunhos')">Virar lead</button>
+    <button class="btn ghost xs" onclick="descartarAplicacao('${ap.id}','rascunhos')">Descartar</button>
+  </div>`;
+}
+
 /* ===================== BACKUP & CONFIG ===================== */
 function movimentoPessoalFields(tipo){
   const cats = tipo==='entrada' ? ['Salário/Pró-labore','Outra renda'] : [...financasPessoais.categoriasFixas, ...financasPessoais.categoriasVariaveis].map(c=>c.nome);
@@ -3152,6 +3847,7 @@ render();
 updateCloudBadge();
 renderUsuarioAtualBadge();
 initCloudIfConfigured();
+initFormCloudIfConfigured();
 </script>
 </body>
 </html>
