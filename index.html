@@ -880,22 +880,28 @@ function initFormCloudIfConfigured(){ const cfg = loadFormCloudConfig(); if(cfg)
    o formulário", e as respostas ficariam visíveis entre si. Sessão de login fica persistida pelo próprio Firebase (não precisa repetir toda hora). */
 function connectFormCloud(cfg, email, senha){
   if(typeof firebase === 'undefined'){ mostrarToast('Não foi possível carregar o Firebase — verifique sua conexão com a internet e tente novamente.', 'erro'); return; }
-  try{
-    formCloudStatus = 'connecting';
-    let app = (firebase.apps||[]).find(a=>a.name==='formApp');
-    if(!app) app = firebase.initializeApp(cfg.firebaseConfig, 'formApp');
-    formCloudDb = app.firestore();
-    const aoLogar = ()=>{ formCloudStatus = 'connected'; saveFormCloudConfig(cfg); carregarAplicacoes(); carregarRascunhos(); };
-    if(email && senha){
-      app.auth().signInWithEmailAndPassword(email, senha).then(aoLogar)
-        .catch(err=>{ formCloudStatus='precisa-login'; mostrarToast('E-mail ou senha incorretos: '+err.message, 'erro'); render(); });
-    } else {
-      app.auth().onAuthStateChanged(user=>{
-        if(user && !user.isAnonymous) aoLogar();
-        else if(formCloudStatus!=='connected'){ formCloudStatus='precisa-login'; render(); }
-      });
-    }
-  }catch(e){ formCloudStatus='error'; mostrarToast('Erro ao conectar: '+e.message, 'erro'); render(); }
+  const iniciar = ()=>{
+    try{
+      formCloudStatus = 'connecting';
+      const app = firebase.initializeApp(cfg.firebaseConfig, 'formApp');
+      formCloudDb = app.firestore();
+      const aoLogar = ()=>{ formCloudStatus = 'connected'; saveFormCloudConfig(cfg); carregarAplicacoes(); carregarRascunhos(); };
+      if(email && senha){
+        app.auth().signInWithEmailAndPassword(email, senha).then(aoLogar)
+          .catch(err=>{ formCloudStatus='precisa-login'; mostrarToast('E-mail ou senha incorretos: '+err.message, 'erro'); render(); });
+      } else {
+        app.auth().onAuthStateChanged(user=>{
+          if(user && !user.isAnonymous) aoLogar();
+          else if(formCloudStatus!=='connected'){ formCloudStatus='precisa-login'; render(); }
+        });
+      }
+    }catch(e){ formCloudStatus='error'; mostrarToast('Erro ao conectar: '+e.message, 'erro'); render(); }
+  };
+  /* Sem isso, uma tentativa anterior com config diferente (mesmo que errada) ficava "presa" e todas as
+     tentativas seguintes na mesma aba continuavam usando os dados antigos, ignorando o que foi colado de novo. */
+  const existente = (firebase.apps||[]).find(a=>a.name==='formApp');
+  if(existente) existente.delete().then(iniciar).catch(iniciar);
+  else iniciar();
 }
 function carregarAplicacoes(){
   if(!formCloudDb) return;
