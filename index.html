@@ -828,32 +828,40 @@ function connectCloud(cfg, isFirstConnect){
     mostrarToast('Não foi possível carregar o Firebase — verifique sua conexão com a internet e tente novamente.', 'erro');
     return;
   }
-  try{
-    cloudStatus = 'connecting'; updateCloudBadge();
-    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(cfg.firebaseConfig);
-    cloudDb = firebase.firestore();
-    firebase.auth().signInAnonymously().then(()=>{
-      const docRef = cloudDb.collection('workspaces').doc(cfg.workspaceId);
-      if(cloudUnsub) cloudUnsub();
-      cloudUnsub = docRef.onSnapshot(snap=>{
-        if(snap.exists){
-          const remote = snap.data();
-          if(remote && remote.state){
-            suppressCloudEcho = true;
-            state = migrateState(remote.state);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-            suppressCloudEcho = false;
-            render();
-            renderUsuarioAtualBadge();
+  const iniciar = ()=>{
+    try{
+      cloudStatus = 'connecting'; updateCloudBadge();
+      firebase.initializeApp(cfg.firebaseConfig);
+      cloudDb = firebase.firestore();
+      firebase.auth().signInAnonymously().then(()=>{
+        const docRef = cloudDb.collection('workspaces').doc(cfg.workspaceId);
+        if(cloudUnsub) cloudUnsub();
+        cloudUnsub = docRef.onSnapshot(snap=>{
+          if(snap.exists){
+            const remote = snap.data();
+            if(remote && remote.state){
+              suppressCloudEcho = true;
+              state = migrateState(remote.state);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+              suppressCloudEcho = false;
+              render();
+              renderUsuarioAtualBadge();
+            }
+          } else if(isFirstConnect){
+            docRef.set({state: state, updatedAt: Date.now()});
           }
-        } else if(isFirstConnect){
-          docRef.set({state: state, updatedAt: Date.now()});
-        }
-        cloudStatus = 'connected'; updateCloudBadge();
-      }, err=>{ console.error(err); cloudStatus='error'; updateCloudBadge(); });
-      saveCloudConfig(cfg);
-    }).catch(err=>{ cloudStatus='error'; updateCloudBadge(); mostrarToast('Erro ao autenticar na nuvem: '+err.message, 'erro'); });
-  }catch(e){ cloudStatus='error'; updateCloudBadge(); mostrarToast('Erro ao conectar: '+e.message, 'erro'); }
+          cloudStatus = 'connected'; updateCloudBadge();
+        }, err=>{ console.error(err); cloudStatus='error'; updateCloudBadge(); });
+        saveCloudConfig(cfg);
+      }).catch(err=>{ cloudStatus='error'; updateCloudBadge(); mostrarToast('Erro ao autenticar na nuvem: '+err.message, 'erro'); });
+    }catch(e){ cloudStatus='error'; updateCloudBadge(); mostrarToast('Erro ao conectar: '+e.message, 'erro'); }
+  };
+  /* Antes, essa checagem via só "existe algum app Firebase?" — só que isso também conta o app nomeado 'formApp' (Aplicações),
+     que é uma conexão separada. Se as Aplicações já tivessem sido conectadas primeiro, a Nuvem principal nunca era inicializada
+     de verdade. Agora checa especificamente pelo app PADRÃO (o que a Nuvem usa) e recria se estiver preso numa config antiga. */
+  const appPadrao = (firebase.apps||[]).find(a=>a.name==='[DEFAULT]');
+  if(appPadrao) appPadrao.delete().then(iniciar).catch(iniciar);
+  else iniciar();
 }
 
 function pushToCloudDebounced(){
